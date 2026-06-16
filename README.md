@@ -5,7 +5,7 @@
 **The simplest way to install and manage Minecraft mods, resource packs and shaders.**
 No profiles. No config files. No fuss.
 
-[![CI](https://github.com/MateuszPodeszwa/lodestone-mod-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/MateuszPodeszwa/lodestone-mod-manager/actions/workflows/ci.yml)
+[![CI](https://github.com/MateuszPodeszwa/LodestoneModManager/actions/workflows/ci.yml/badge.svg)](https://github.com/MateuszPodeszwa/LodestoneModManager/actions/workflows/ci.yml)
 &nbsp;·&nbsp; Windows · .NET 10 · WPF · MIT
 
 </div>

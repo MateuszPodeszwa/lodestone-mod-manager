@@ -18,7 +18,10 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
     <PackageVersion Include="Velopack" Version="1.2.0" />
     <PackageVersion Include="H.NotifyIcon.Wpf" Version="2.4.1" />
-    <PackageVersion Include="MdXaml" Version="1.27.0" />
+    <!-- Mod descriptions are web-authored Markdown+HTML; Markdig renders them to HTML which a
+         hardened WebView2 displays with full fidelity (see Controls/MarkdownWebView). -->
+    <PackageVersion Include="Markdig" Version="0.37.0" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
   </ItemGroup>
 
   <ItemGroup Label="Test">

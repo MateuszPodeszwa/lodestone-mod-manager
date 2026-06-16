@@ -1,30 +1,48 @@
 # Supporters & donations
 
 Lodestone is **free, and always will be**. Donations are optional and **never gate functionality** —
-supporters get cosmetic/convenience perks and our thanks. There is **no payment processor in the app**:
-pledging happens on Patreon, and a redeemable code unlocks the perks offline.
+supporters get cosmetic/convenience perks and our thanks. There is **no payment processor and no backend
+in the app**: pledging happens on Patreon, a website verifies the pledge and mints a short-lived code,
+and that code unlocks the perks **offline**.
 
 ## How it works (for users)
 
-1. Pledge on the Patreon page (the **Support us** screen's buttons open it).
-2. You receive a **supporter code**.
-3. Paste it into **Support us → "Redeem code"**. The app verifies it offline and unlocks your perks.
+1. **Join on Patreon** (any tier — current or former patrons all count).
+2. **Open our website** and sign in with Patreon to verify your pledge.
+3. The site **generates a code** that is valid for **one hour**.
+4. Paste it into **Support → "Redeem your supporter code"**. The app verifies it offline and unlocks
+   your perks **permanently** (until you remove the code or uninstall).
 
 ### What a code unlocks (cosmetic / convenience only)
 
-- A **Supporter badge** in the title bar (live today).
-- **Extra accent themes** (entitlement: `SupporterService.CanUseExtraThemes`).
-- An opt-in **beta update channel** (entitlement: `SupporterService.CanUseBetaChannel`).
+- A **Supporter badge** in the title bar.
+- **Exclusive accent themes** (Settings → Appearance; entitlement: `SupporterService.CanUseExtraThemes`).
+- **Early access** to beta builds (Settings → Mods & updates; entitlement: `SupporterService.CanUseBetaChannel`).
+- **Priority support** (a link to the support channel).
 
 Core mod-managing — install, update, compatibility checks, everything — is always free.
 
-## How codes work (for the maintainer)
+## Security model (offline, no backend)
 
-Codes are short signed tokens: `base64url(payload).base64url(signature)`. The payload is
-`{"t":tier,"h":holder,"e":expiry?}`, signed with **ECDSA P-256 / SHA-256**. The app verifies them with
-an **embedded public key** (`SupporterKeys.DefaultPublicKey`). Only the public key ships; the private
-key stays with you. Because the perks are cosmetic, signature verification is sufficient — there is no
-server and nothing secret in the client.
+Codes are signed tokens: `base64url(payload).base64url(signature)`, where the payload is
+`{"v":1,"k":"supporter","h":<holder>,"iat":<unix-seconds-UTC>}`, signed with **ECDSA P-256 / SHA-256**.
+The app verifies them with an **embedded public key** (`SupporterKeys.DefaultPublicKey`); only the public
+key ships, the private key stays with the maintainer/website.
+
+- **1-hour activation window.** The app accepts a code only within one hour of its `iat`. The policy lives
+  app-side (`SupporterService.ActivationWindow`), so a leaked code can't extend its own life — and a short
+  window means a shared code dies quickly.
+- **Permanent after activation.** Once redeemed, status is granted with no recurring expiry.
+- **Tamper-resistant at rest.** The app stores the *signed code itself* and **re-verifies its signature on
+  every load** — editing `entitlements.json` (or flipping a flag) can't fake supporter status without a
+  genuinely signed code. (Binary-patching the client is unpreventable in any offline scheme; signing
+  defeats the realistic threat, which is data tampering.)
+- **Uninstall clears it.** A Velopack uninstall hook deletes the token, so a reinstall requires a fresh code.
+
+> The website must sign exactly the payload shape above with the private key matching the embedded public
+> key. Until the website exists, the `lodestone` CLI mints codes the same way (below).
+
+## Maintainer tooling (CLI)
 
 ### One-time setup
 
@@ -35,22 +53,28 @@ dotnet run --project src/Lodestone.Cli -- keygen
 #  → PUBLIC=...    (paste into src/Lodestone.Infrastructure/Supporter/SupporterKeys.cs)
 ```
 
-### Issuing a code after a pledge
+### Issuing a code
 
 ```powershell
 dotnet run --project src/Lodestone.Cli -- issue `
   --key "@keys/supporter.private.b64" `
-  --tier Supporter --holder "patron@example.com" [--expires 2027-01-01T00:00:00Z]
-# → prints the code to send to the patron
+  --holder "patron@example.com" [--issued 2026-06-16T12:00:00Z]
+# → prints the code (valid to redeem for 1 hour after --issued, default now)
 
-# Sanity-check any code against the embedded public key:
+# Sanity-check any code against a public key:
 dotnet run --project src/Lodestone.Cli -- verify --pub "@keys/supporter.public.b64" --code <code>
 ```
 
 > ⚠️ **Never commit the private key.** `keys/` is git-ignored. If it ever leaks, run `keygen` again,
 > replace `SupporterKeys.DefaultPublicKey`, and ship an update — old codes simply stop verifying.
 
-## Configuring the Patreon link
+## Configuring the links
 
-Set your real Patreon URL in `DonateViewModel.PatreonUrl`
-(`src/Lodestone.App/ViewModels/DonateViewModel.cs`).
+The links live in `DonateViewModel` (`src/Lodestone.App/ViewModels/DonateViewModel.cs`):
+
+- `PatreonUrl` → `https://www.patreon.com/c/mateuszpodeszwa`
+- `WebsiteUrl` → `https://lodestonemc.net/supporter` (Patreon login + code generation)
+- `PrioritySupportUrl` → `https://lodestonemc.net/support`
+
+The two `lodestonemc.net` paths assume that site is live — the domain is registered but not yet
+deployed, so those pages must exist before the supporter flow works end to end.

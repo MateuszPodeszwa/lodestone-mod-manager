@@ -3,9 +3,11 @@
 Lodestone runs today as-is. These optional steps connect it to your real accounts/assets and harden
 releases. Each is independent.
 
-## 1. Patreon link
-Set your Patreon URL in `DonateViewModel.PatreonUrl`
-(`src/Lodestone.App/ViewModels/DonateViewModel.cs`). The **Support us** buttons open it.
+## 1. Patreon & website links
+Configured in `DonateViewModel` (`src/Lodestone.App/ViewModels/DonateViewModel.cs`): `PatreonUrl`
+points at the Patreon page (the **Support us** buttons open it); `WebsiteUrl` and `PrioritySupportUrl`
+point at `lodestonemc.net/supporter` and `lodestonemc.net/support`. That domain is registered but not
+yet deployed — those two pages must go live for the supporter sign-in/code flow to work.
 
 ## 2. Supporter codes (already wired)
 A real key pair was generated; the **public** key is embedded in `SupporterKeys.DefaultPublicKey`
