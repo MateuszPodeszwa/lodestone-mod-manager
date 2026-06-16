@@ -20,16 +20,30 @@ conflict, and keep everything up to date — all without ever touching a config 
 > Lodestone is **free, and always will be**. Every feature is available to everyone; supporters get
 > a few cosmetic perks and our thanks. See [Supporters](#-supporters).
 
-## ⬇️ Download
+## ⬇️ Download & install
 
 **[⬇ Get the latest release →](https://github.com/MateuszPodeszwa/LodestoneModManager/releases/latest)**
 
-- **`Lodestone-win-Setup.exe`** — recommended installer; **updates itself automatically**.
-- **`Lodestone-win-Portable.zip`** — standalone, no install (update by re-downloading).
+Pick one — both are self-contained, so there's **nothing else to install** (no .NET, no runtimes):
 
-No prerequisites — the build is self-contained. On first run Windows may show a one-time SmartScreen
-prompt (the build isn't code-signed yet); click **More info → Run anyway**. How releases and
-auto-update work is documented in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+- **`Lodestone-win-Setup.exe`** — recommended installer; **updates itself automatically** from then on.
+- **`Lodestone-win-Portable.zip`** — standalone, no install (to update, just download the newer zip).
+
+### How to install (Setup.exe)
+
+1. Download **`Lodestone-win-Setup.exe`** from the [latest release](https://github.com/MateuszPodeszwa/LodestoneModManager/releases/latest).
+2. Run it. Windows may show a blue **"Windows protected your PC"** screen — this is expected because the
+   app isn't code-signed yet, **not** a virus warning. Click **More info → Run anyway** (just once).
+3. Lodestone installs and launches itself. You're done — there's no setup wizard to click through.
+
+From then on it **keeps itself up to date**: when a new version is released, Lodestone downloads and
+applies it on the next launch. You'll never need to reinstall.
+
+> **Prefer not to install?** Download **`Lodestone-win-Portable.zip`**, unzip it anywhere (e.g. a USB
+> stick), and run `Lodestone.exe`. The portable version doesn't auto-update — grab the newer zip when
+> you want the latest.
+
+Maintainers: how releases and auto-update work is documented in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 ## ✨ Features
 
