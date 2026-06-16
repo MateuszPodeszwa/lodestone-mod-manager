@@ -74,6 +74,9 @@ Tagging a commit `v*` triggers the release workflow, which packages a Velopack i
 publishes it to GitHub Releases. Installed clients update themselves from that feed. Optional
 code-signing is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment--auto-update).
 
+**Maintainer setup** (Patreon link, supporter keys, CurseForge key, signing, cutting a release):
+see **[docs/HANDOFF.md](docs/HANDOFF.md)**.
+
 ## 💚 Supporters
 
 Donations are handled through Patreon and are **entirely optional**. After pledging you receive a
