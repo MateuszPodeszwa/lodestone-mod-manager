@@ -1,0 +1,54 @@
+name: 🐞 Bug report
+description: Something isn't working as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please search existing issues first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I drag a .jar onto the window, ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Lodestone
+        2. Go to ...
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Lodestone version
+      description: Shown at the bottom of the Settings screen (e.g. 0.1.0-beta).
+    validations:
+      required: true
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Minecraft version & loader
+      placeholder: 1.21.4, Fabric
+    validations:
+      required: false
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Attach or paste any errors. Logs live under %APPDATA%\Lodestone.
+      render: shell
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & ideas
+    url: https://github.com/MateuszPodeszwa/LodestoneModManager/discussions
+    about: Ask a question or float an idea before opening a formal issue.
+  - name: 💚 Support Lodestone
+    url: https://lodestonemc.net/supporter
+    about: Lodestone is free; donations are optional and unlock cosmetic-only perks.
