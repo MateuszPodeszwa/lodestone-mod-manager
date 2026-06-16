@@ -47,3 +47,5 @@ dotnet_diagnostic.CA1000.severity = none   # static factory methods on Result<T>
 # Underscored test names are the intended, readable xUnit convention.
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CA1515.severity = none   # test classes are public by necessity
+dotnet_diagnostic.CA1305.severity = none   # ISO literals in tests don't need IFormatProvider
+dotnet_diagnostic.CA1859.severity = none   # interface-typed fields are fine in tests
