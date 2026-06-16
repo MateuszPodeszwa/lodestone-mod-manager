@@ -1,0 +1,69 @@
+name: Release
+
+# Tag a commit `vX.Y.Z` to cut a release. Velopack packages a self-contained Windows installer
+# and delta packages and publishes them to GitHub Releases, which is the update feed installed
+# clients poll from "Check for updates".
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build (e.g. 0.1.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Derive version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF_NAME -like 'v*') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '${{ github.event.inputs.version }}' }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Restore & test
+        run: dotnet test Lodestone.slnx --configuration Release
+
+      - name: Publish (self-contained win-x64)
+        run: >
+          dotnet publish src/Lodestone.App/Lodestone.App.csproj
+          --configuration Release -r win-x64 --self-contained true
+          -o publish /p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      - name: Package with Velopack
+        run: >
+          vpk pack
+          --packId Lodestone
+          --packVersion ${{ steps.ver.outputs.version }}
+          --packDir publish
+          --mainExe Lodestone.exe
+          --packTitle "Lodestone Mod Manager"
+          --packAuthors "Mateusz Podeszwa"
+        # Code signing (optional): add --signParams once a certificate is configured via secrets,
+        # e.g. --signParams "/td sha256 /fd sha256 /tr http://timestamp.digicert.com /f cert.pfx /p $env:VPK_SIGN_PASSWORD".
+
+      - name: Publish release to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/MateuszPodeszwa/lodestone-mod-manager
+          --publish
+          --releaseName "Lodestone ${{ steps.ver.outputs.version }}"
+          --tag ${{ github.ref_name }}
+          --token $env:GITHUB_TOKEN

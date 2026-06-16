@@ -6,6 +6,8 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>Lodestone.App</RootNamespace>
     <AssemblyName>Lodestone</AssemblyName>
+    <!-- Custom entry point so Velopack can bootstrap before WPF (see Program.cs). -->
+    <StartupObject>Lodestone.App.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Velopack updates ship as framework-dependent by default; self-contained is toggled in release.yml. -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
