@@ -139,10 +139,37 @@ public sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<AccentSwatchViewModel> Accents { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(UpdateLoaderLabel))]
+    [NotifyPropertyChangedFor(nameof(LoaderActionLabel))]
     private bool _isUpdatingLoader;
 
-    public string UpdateLoaderLabel => IsUpdatingLoader ? "Updating…" : "Update loader";
+    /// <summary>Whether the active loader is actually installed for the selected Minecraft version — the
+    /// detected truth, so the UI shows "Installed"/"Not installed" rather than just echoing the selection.</summary>
+    public bool IsActiveLoaderInstalled
+    {
+        get
+        {
+            GameVersion? version = string.IsNullOrWhiteSpace(LoaderGameVersion)
+                ? null
+                : GameVersion.Create(LoaderGameVersion).Match<GameVersion?>(v => v, _ => null);
+            return version is not null && _inventory.IsLoaderInstalled(Loader.ParseLoader(), version);
+        }
+    }
+
+    public string LoaderStatusLabel => IsActiveLoaderInstalled ? "Installed" : "Not installed";
+
+    /// <summary>The action button reads "Install" until the loader is detected as installed for the
+    /// selected version, then "Update loader" — so selecting a loader never implies it's installed.</summary>
+    public string LoaderActionLabel => IsUpdatingLoader
+        ? IsActiveLoaderInstalled ? "Updating…" : "Installing…"
+        : IsActiveLoaderInstalled ? "Update loader" : "Install";
+
+    // Re-evaluates the detected loader state (called on loader/version change and after an install).
+    private void RaiseLoaderStatus()
+    {
+        OnPropertyChanged(nameof(IsActiveLoaderInstalled));
+        OnPropertyChanged(nameof(LoaderStatusLabel));
+        OnPropertyChanged(nameof(LoaderActionLabel));
+    }
 
     /// <summary>The Minecraft versions actually installed — the choices for which version to set the loader up against.</summary>
     public ObservableCollection<string> GameVersions { get; } = [];
@@ -227,52 +254,16 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    // Selecting a loader sets it active — it does NOT install it. Installing is an explicit step (the
+    // "Install" button), so "active" (what's selected) is never mistaken for "installed" (what's on disk).
     partial void OnLoaderChanged(string value)
     {
         Save();
-        _ = InstallLoaderAsync(value);
+        RaiseLoaderStatus();
     }
 
-    // When the user picks a loader, install it in the background (Fabric/Quilt) so it's ready in the launcher.
-    private async Task InstallLoaderAsync(string loaderSlug)
-    {
-        if (!_ready || !_locator.IsValid(_settings.Current.GameDirectory))
-        {
-            return;
-        }
+    partial void OnLoaderGameVersionChanged(string? value) => RaiseLoaderStatus();
 
-        Lodestone.Domain.Loader loader = loaderSlug.ParseLoader();
-        if (!_loaderInstaller.Supports(loader))
-        {
-            string guidance = _external.Supports(loader)
-                ? $"Use “Update loader” to download and run the official {loader.ToDisplayName()} installer."
-                : $"{loader.ToDisplayName()} must be installed with its official installer — Lodestone still manages its mods.";
-            _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} loader", guidance, ToastKind.Info));
-            return;
-        }
-
-        GameVersion? version = ResolveLoaderVersion();
-        if (version is null)
-        {
-            _bus.Publish(new ToastMessage("No Minecraft version found",
-                "Run Minecraft once to install a version, then Lodestone can set up the loader for it.", ToastKind.Warning));
-            return;
-        }
-
-        // Single-flight: skip silently if another operation is running (the controls are disabled anyway).
-        await _gate.RunAsync(async () =>
-        {
-            Result result = await _loaderInstaller.EnsureInstalledAsync(loader, version).ConfigureAwait(true);
-            if (result.IsSuccess)
-            {
-                _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} ready", $"Installed for {version} — pick it in your launcher."));
-            }
-            else if (result.Error.Code != "game.dir_missing")
-            {
-                _bus.Publish(new ToastMessage("Loader install failed", result.Error.Message, ToastKind.Error));
-            }
-        }).ConfigureAwait(true);
-    }
     partial void OnAutoUpdateChanged(bool value) => Save();
     partial void OnNotifyChanged(bool value) => Save();
     partial void OnConcurrentChanged(int value) => Save();
@@ -487,6 +478,9 @@ public sealed partial class SettingsViewModel : ObservableObject
                 IsUpdatingLoader = false;
             }
         }).ConfigureAwait(true);
+
+        RaiseLoaderStatus(); // a Fabric/Quilt install completes synchronously — reflect it now
+        _bus.Publish(new LibraryChanged()); // let Browse/Home re-evaluate the loader gate
 
         if (!ran)
         {

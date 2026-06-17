@@ -26,6 +26,9 @@ public sealed partial class MinecraftGameInventory : IGameInventory
 
     public bool IsVersionInstalled(GameVersion version) => InstalledVersions().Any(v => v.Equals(version));
 
+    public bool IsLoaderInstalled(Loader loader, GameVersion version)
+        => InstalledProfiles().Any(p => p.Loader == loader && p.GameVersion.Equals(version));
+
     public IReadOnlyList<GameVersion> InstalledVersions()
     {
         var byValue = new Dictionary<string, GameVersion>(StringComparer.OrdinalIgnoreCase);

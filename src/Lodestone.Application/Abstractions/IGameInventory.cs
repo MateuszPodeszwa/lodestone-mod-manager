@@ -25,4 +25,11 @@ public interface IGameInventory
 
     /// <summary>True when a base profile (vanilla, or a modded one that inherits from it) exists for this version.</summary>
     bool IsVersionInstalled(GameVersion version);
+
+    /// <summary>
+    /// True when a profile for this loader is installed against the given base game version (e.g. Fabric
+    /// for 1.21.4) — the detected truth used to tell "selected" apart from "actually installed". Vanilla
+    /// is <see cref="Loader.None"/>.
+    /// </summary>
+    bool IsLoaderInstalled(Loader loader, GameVersion version);
 }

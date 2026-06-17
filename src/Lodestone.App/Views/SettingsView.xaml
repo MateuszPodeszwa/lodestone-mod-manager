@@ -38,13 +38,26 @@
                     <Grid Margin="18,16">
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Loader version" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
-                            <TextBlock Text="Pick the Minecraft version, then install or update Fabric/Quilt for it." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
+                            <TextBlock Text="Pick the Minecraft version, then install or update the loader for it." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" IsEnabled="{Binding CanManageLoaders}">
                             <TextBlock Text="Minecraft" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <ComboBox Width="120" Style="{StaticResource DarkComboBox}" ItemContainerStyle="{StaticResource DarkComboBoxItem}"
                                       ItemsSource="{Binding GameVersions}" SelectedItem="{Binding LoaderGameVersion, Mode=TwoWay}" Margin="0,0,10,0" />
-                            <Button Content="{Binding UpdateLoaderLabel}" Style="{StaticResource SecondaryButton}"
+                            <!-- Detected install status for the selected loader + version — the truth, not just what's selected. -->
+                            <TextBlock Text="{Binding LoaderStatusLabel}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActiveLoaderInstalled}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button Content="{Binding LoaderActionLabel}" Style="{StaticResource SecondaryButton}"
                                     Command="{Binding UpdateLoaderCommand}" />
                         </StackPanel>
                     </Grid>
