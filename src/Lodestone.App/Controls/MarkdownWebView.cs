@@ -113,7 +113,9 @@ public sealed class MarkdownWebView : WebView2
         }
 
         _expectingInternalNavigation = true;
-        CoreWebView2.NavigateToString(MarkdownDocument.ToHtml(Markdown));
+        // Render with the current accent so description links/quotes match the chosen accent. The document is
+        // static HTML, so an open description won't recolour mid-view, but each newly opened one picks it up.
+        CoreWebView2.NavigateToString(MarkdownDocument.ToHtml(Markdown, AccentApplier.CurrentAccentHex()));
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)

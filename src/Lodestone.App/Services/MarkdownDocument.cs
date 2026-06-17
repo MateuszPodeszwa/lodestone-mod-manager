@@ -15,13 +15,15 @@ public static class MarkdownDocument
         .UseAdvancedExtensions() // GFM-style: pipe/grid tables, autolinks, task lists, footnotes, etc.
         .Build();
 
-    public static string ToHtml(string? markdown)
+    /// <param name="accentHex">The accent as an opaque CSS hex (e.g. "#5AC26D"), so description links match
+    /// the chosen accent. Resolve it from <see cref="AccentApplier.CurrentAccentHex"/> at the call site.</param>
+    public static string ToHtml(string? markdown, string accentHex = "#5AC26D")
     {
         string body = Markdig.Markdown.ToHtml(markdown ?? string.Empty, Pipeline);
-        return Wrap(body);
+        return Wrap(body, accentHex);
     }
 
-    private static string Wrap(string body) => $$"""
+    private static string Wrap(string body, string accentHex) => $$"""
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -36,7 +38,7 @@ public static class MarkdownDocument
             font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
             font-size: 14px; line-height: 1.6; overflow-wrap: break-word; word-break: break-word;
           }
-          a { color: #5AC26D; text-decoration: none; }
+          a { color: {{accentHex}}; text-decoration: none; }
           a:hover { text-decoration: underline; }
           h1, h2, h3, h4, h5, h6 { color: #F2F2F4; font-weight: 600; line-height: 1.25; margin: 1.1em 0 .5em; }
           h1 { font-size: 1.5em; } h2 { font-size: 1.3em; } h3 { font-size: 1.12em; }
@@ -51,7 +53,7 @@ public static class MarkdownDocument
           code { font-family: 'Cascadia Mono', Consolas, ui-monospace, monospace; font-size: .88em; background: #2A2A30; padding: .12em .38em; border-radius: 5px; }
           pre { background: #17171A; padding: 12px 14px; border-radius: 9px; overflow: auto; }
           pre code { background: none; padding: 0; font-size: .86em; }
-          blockquote { padding: .2em 1em; border-left: 3px solid #5AC26D80; color: #9A9AA2; }
+          blockquote { padding: .2em 1em; border-left: 3px solid {{accentHex}}80; color: #9A9AA2; }
           table { border-collapse: collapse; max-width: 100%; }
           th, td { border: 1px solid #FFFFFF1A; padding: 6px 11px; text-align: left; }
           th { background: #FFFFFF0D; font-weight: 600; }
