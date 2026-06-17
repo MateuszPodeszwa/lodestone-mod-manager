@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -37,6 +38,11 @@ public interface IDialogService
 
     void OpenUrl(string url);
 
+    /// <summary>Opens a location in the OS file browser. An existing file is shown with its containing
+    /// folder open and the file selected; anything else is treated as a folder and opened (created first
+    /// if missing, so there's always something to show).</summary>
+    void RevealInExplorer(string path);
+
     /// <summary>Modal yes/no confirmation; returns true only when the user explicitly confirms. Set
     /// <paramref name="warning"/> to false for benign prompts (e.g. an available update) so the dialog
     /// shows an information icon instead of a warning triangle.</summary>
@@ -66,6 +72,27 @@ public sealed class DialogService : IDialogService
         catch (Exception)
         {
             MessageBox.Show($"Couldn't open the link:\n{url}", "Lodestone", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
+    public void RevealInExplorer(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                // Open the containing folder with the file highlighted (Windows shell convention).
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            }
+            else
+            {
+                Directory.CreateDirectory(path); // ensure the folder exists so there's always something to show
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+        }
+        catch (Exception)
+        {
+            MessageBox.Show($"Couldn't open the location:\n{path}", "Lodestone", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

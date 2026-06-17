@@ -197,6 +197,15 @@
                 <Border BorderBrush="{StaticResource BorderFaintBrush}" BorderThickness="0,1,0,0">
                     <Grid Margin="18,16">
                         <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Logs" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
+                            <TextBlock Text="Open the folder with Lodestone’s diagnostic logs — handy when reporting a bug." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <Button Content="Open logs" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Command="{Binding OpenLogsCommand}" />
+                    </Grid>
+                </Border>
+                <Border BorderBrush="{StaticResource BorderFaintBrush}" BorderThickness="0,1,0,0">
+                    <Grid Margin="18,16">
+                        <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Reset to clean" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
                             <TextBlock Text="Remove every mod and Fabric/Quilt loader Lodestone installed — back to vanilla. Your worlds are kept." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
                         </StackPanel>

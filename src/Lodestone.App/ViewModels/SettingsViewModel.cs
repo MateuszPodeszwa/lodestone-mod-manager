@@ -11,6 +11,7 @@ using Lodestone.Application.Supporter;
 using Lodestone.Application.UseCases;
 using Lodestone.Domain;
 using Lodestone.Domain.Common;
+using Lodestone.Infrastructure.Persistence;
 
 namespace Lodestone.App.ViewModels;
 
@@ -432,6 +433,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     // applying the same supporter/early-access channel gate as the startup check — not just reports.
     [RelayCommand]
     private Task CheckUpdatesAsync() => _appUpdates.CheckManuallyAsync();
+
+    // Opens the folder holding Lodestone's diagnostic logs with the newest log selected, so it's easy to
+    // attach them to a bug report — the action the website's "Where are my logs?" FAQ points users to.
+    // Falls back to the logs folder itself when nothing has been logged yet (RevealInExplorer creates it).
+    [RelayCommand]
+    private void OpenLogs() => _dialog.RevealInExplorer(LodestoneLog.LatestLogFile() ?? LodestonePaths.LogsDirectory);
 
     [RelayCommand]
     private async Task UpdateLoaderAsync()

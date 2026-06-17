@@ -16,6 +16,34 @@ public static class LodestoneLog
     public static void Error(string message, Exception? exception = null)
         => Write("ERROR", exception is null ? message : $"{message}{Environment.NewLine}{exception}");
 
+    /// <summary>The most recently written log file, or <c>null</c> when none exist yet. Lets the UI reveal
+    /// the newest log — the one most likely needed for a bug report — instead of just the folder.</summary>
+    public static string? LatestLogFile() => LatestLogFile(LodestonePaths.LogsDirectory);
+
+    /// <summary>Finds the newest <c>lodestone-*.log</c> in <paramref name="directory"/>. Exposed as an
+    /// overload taking an explicit directory so the lookup can be unit-tested in isolation; the
+    /// parameterless version uses the canonical <see cref="LodestonePaths.LogsDirectory"/>.</summary>
+    public static string? LatestLogFile(string directory)
+    {
+        try
+        {
+            var dir = new DirectoryInfo(directory);
+            if (!dir.Exists)
+            {
+                return null;
+            }
+
+            return dir.EnumerateFiles("lodestone-*.log")
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .ThenByDescending(f => f.Name, StringComparer.Ordinal)
+                .FirstOrDefault()?.FullName;
+        }
+        catch (IOException)
+        {
+            return null; // best-effort: never let a log lookup throw into the UI
+        }
+    }
+
     private static void Write(string level, string text)
     {
         try
