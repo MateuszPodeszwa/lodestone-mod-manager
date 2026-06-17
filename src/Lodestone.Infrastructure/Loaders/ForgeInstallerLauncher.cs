@@ -163,17 +163,29 @@ public sealed class ForgeInstallerLauncher : IExternalLoaderInstaller
         return ($"{NeoForgeMaven}/{best}/neoforge-{best}-installer.jar", best);
     }
 
-    // NeoForge versions drop Minecraft's leading "1.": 1.21 -> 21.0, 1.21.1 -> 21.1, 1.20.2 -> 20.2.
+    // The prefix a NeoForge build starts with for a given Minecraft version. NeoForge embeds the target
+    // game version in its build number, but the shape depends on how Minecraft itself is versioned:
+    //   • Classic "1.MINOR[.PATCH]" releases drop the leading "1." -> "MINOR.PATCH" (patch defaults to 0):
+    //     1.21 -> 21.0, 1.21.1 -> 21.1, 1.20.2 -> 20.2 (builds look like "21.1.65").
+    //   • Calendar releases that no longer start with "1." (e.g. "26.2") are used verbatim, because
+    //     NeoForge appends its build to the full version (builds look like "26.2.0.1-beta").
+    // Callers match builds that start with "<prefix>.", so the trailing dot they add keeps a prefix like
+    // "26.2" from spuriously matching "26.20.x".
     private static string? NeoForgePrefix(GameVersion version)
     {
         string[] parts = version.Value.Split('.');
-        if (parts.Length < 2 || parts[0] != "1")
+        if (parts.Length < 2)
         {
             return null;
         }
 
-        string patch = parts.Length >= 3 ? parts[2] : "0";
-        return $"{parts[1]}.{patch}";
+        if (parts[0] == "1")
+        {
+            string patch = parts.Length >= 3 ? parts[2] : "0";
+            return $"{parts[1]}.{patch}";
+        }
+
+        return version.Value;
     }
 
     private static string? TryProp(JsonElement obj, string name)
