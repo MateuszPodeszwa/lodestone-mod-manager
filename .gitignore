@@ -10,7 +10,10 @@ TestResults/
 *.userprefs
 
 # ----- Velopack / release output -----
-Releases/
+# Anchored to the repo root: vpk pack writes ./Releases here. Unanchored "Releases/"
+# also matched website/server/api/releases/ (case-insensitive on Windows), which silently
+# kept the changelog API routes out of git. Keep this rooted so it only hits build output.
+/Releases/
 *.nupkg.bak
 
 # ----- IDE / OS -----
