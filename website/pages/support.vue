@@ -29,7 +29,7 @@ const toggle = (i: number) => (openFaq.value = openFaq.value === i ? null : i)
         <Reveal class="relative overflow-hidden rounded-2xl border border-pink/30 p-6" style="background: linear-gradient(135deg, rgba(226,113,154,0.1), rgba(226,113,154,0.03))">
           <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-pink/15"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e2719a" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M12 20s-7-4.7-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.3-7 10-7 10Z" /></svg></div>
           <div class="mt-3.5 text-lg font-bold text-[#f3f3f5]">Priority support</div>
-          <div class="mt-1.5 text-sm leading-relaxed text-muted">Champion-tier patrons get faster, direct help. Message me through Patreon and I'll jump on it.</div>
+          <div class="mt-1.5 text-sm leading-relaxed text-muted">Patrons get faster, direct help. Message me through Patreon and I'll jump on it.</div>
           <a :href="app.links.patreon" target="_blank" rel="noopener" class="mt-4 inline-block text-sm font-semibold text-pink no-underline hover:underline">Message on Patreon →</a>
         </Reveal>
 
