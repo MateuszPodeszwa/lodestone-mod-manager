@@ -47,9 +47,103 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="12,0,0,0" />
         </Style>
+
+        <!-- ============================================================
+             FAQ accordion (supporter view). A templated Expander: the
+             whole question row is a borderless ToggleButton; clicking it
+             reveals the answer with a subtle fade while the chevron
+             rotates 90° and tints to the accent colour.
+             ============================================================ -->
+        <Style x:Key="FaqItem" TargetType="Expander">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton Cursor="Hand" Focusable="False"
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="row" Background="Transparent" CornerRadius="8" Padding="10,14">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="row" Property="Background" Value="{StaticResource HoverOverlayBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Grid.Column="0" ContentSource="Header" VerticalAlignment="Center" />
+                                    <Path x:Name="chevron" Grid.Column="1" Width="13" Height="13" Margin="14,0,2,0"
+                                          Stretch="Uniform" Stroke="{StaticResource TextSecondaryBrush}" StrokeThickness="2"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Data="M9 6l6 6-6 6" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                        <Path.RenderTransform>
+                                            <RotateTransform x:Name="chevronRotate" Angle="0" />
+                                        </Path.RenderTransform>
+                                    </Path>
+                                </Grid>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="content" Visibility="Collapsed" Margin="10,0,34,16" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="content" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="chevron" Property="Stroke" Value="{StaticResource AccentBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="chevronRotate"
+                                                             Storyboard.TargetProperty="Angle"
+                                                             To="90" Duration="0:0:0.18" />
+                                            <DoubleAnimation Storyboard.TargetName="content"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1" Duration="0:0:0.2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="chevronRotate"
+                                                             Storyboard.TargetProperty="Angle"
+                                                             To="0" Duration="0:0:0.18" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Answer body inside an FAQ item. -->
+        <Style x:Key="FaqAnswer" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+        <!-- Hairline between FAQ items. -->
+        <Style x:Key="FaqDivider" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="Margin" Value="10,0" />
+        </Style>
     </UserControl.Resources>
 
-    <StackPanel Margin="36,30" MaxWidth="840" HorizontalAlignment="Left">
+    <!-- The width column is set per-state below: the "become a patron" state keeps its narrow
+         840px reading column, while the supporter state stretches to a full 1040px (issue #3). -->
+    <StackPanel Margin="36,30">
 
         <!-- Header (always shown) -->
         <StackPanel Orientation="Horizontal">
@@ -63,7 +157,8 @@
         </StackPanel>
 
         <!-- ============ NOT A SUPPORTER ============ -->
-        <StackPanel Visibility="{Binding IsNotSupporter, Converter={StaticResource BoolToVis}}">
+        <StackPanel Visibility="{Binding IsNotSupporter, Converter={StaticResource BoolToVis}}"
+                    MaxWidth="840" HorizontalAlignment="Left">
 
             <!-- Patreon promo + CTA -->
             <Border Style="{StaticResource Card}" Padding="22,20" Margin="0,22,0,0">
@@ -129,22 +224,174 @@
         </StackPanel>
 
         <!-- ============ SUPPORTER (thank you) ============ -->
-        <StackPanel Visibility="{Binding IsSupporter, Converter={StaticResource BoolToVis}}">
-            <Border Style="{StaticResource Card}" Padding="24,22" Margin="0,22,0,0" BorderBrush="{StaticResource AccentBrush}">
+        <StackPanel Visibility="{Binding IsSupporter, Converter={StaticResource BoolToVis}}"
+                    MaxWidth="1040" HorizontalAlignment="Stretch">
+
+            <!-- Hero: a celebratory, accent-themed thank-you that makes supporters feel special. -->
+            <Border Style="{StaticResource Card}" Padding="26,24" Margin="0,22,0,0"
+                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#225AC26D" Offset="0" />
+                        <GradientStop Color="#FF26262B" Offset="0.7" />
+                    </LinearGradientBrush>
+                </Border.Background>
                 <StackPanel>
-                    <TextBlock Text="{Binding ThanksHeadline}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                    <TextBlock Text="Your support keeps Lodestone free for everyone. Here's what's unlocked:" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,6,0,16" />
-                    <StackPanel Style="{StaticResource PerkRow}"><Path Style="{StaticResource PerkCheck}" /><TextBlock Style="{StaticResource PerkText}" Text="Supporter badge in the title bar" /></StackPanel>
-                    <StackPanel Style="{StaticResource PerkRow}"><Path Style="{StaticResource PerkCheck}" /><TextBlock Style="{StaticResource PerkText}" Text="Exclusive accent themes (Settings → Appearance)" /></StackPanel>
-                    <StackPanel Style="{StaticResource PerkRow}"><Path Style="{StaticResource PerkCheck}" /><TextBlock Style="{StaticResource PerkText}" Text="Early access to beta builds (Settings → Mods &amp; updates)" /></StackPanel>
-                    <StackPanel Style="{StaticResource PerkRow}"><Path Style="{StaticResource PerkCheck}" /><TextBlock Style="{StaticResource PerkText}" Text="Priority support" /></StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Visit our website" Style="{StaticResource PrimaryButton}" Command="{Binding OpenWebsiteCommand}" />
-                        <Button Content="Priority support" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Command="{Binding OpenPrioritySupportCommand}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="54" Height="54" CornerRadius="15">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#6FCE80" Offset="0" />
+                                    <GradientStop Color="#46A85A" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Path Width="27" Height="27" Stretch="Uniform" Fill="#12180F"
+                                  Data="M12 20s-7-4.7-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.3-7 10-7 10Z" />
+                        </Border>
+                        <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                            <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="999" Padding="9,3" HorizontalAlignment="Left">
+                                <TextBlock Text="Supporter" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="SemiBold" />
+                            </Border>
+                            <TextBlock Text="{Binding ThanksHeadline}" FontSize="22" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,7,0,0" />
+                        </StackPanel>
                     </StackPanel>
+                    <TextBlock TextWrapping="Wrap" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,15,0,0" LineHeight="20"
+                               Text="You're keeping Lodestone free and open for everyone — no feature is ever locked behind a payment. From all of us, thank you. Here's everything your support unlocks." />
                 </StackPanel>
             </Border>
-            <Button Content="Remove supporter code" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,14,0,0" Command="{Binding RemoveCodeCommand}" />
+
+            <!-- Perks: an aligned two-column grid of what's unlocked. -->
+            <Border Style="{StaticResource Card}" Padding="22,20" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="What's unlocked" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="28" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="18" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Perk 1 -->
+                        <Grid Grid.Row="0" Grid.Column="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="999" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.4"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M5 12l4 4 10-10"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Supporter badge" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
+                                <TextBlock Text="Shown beside the title bar" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Perk 2 -->
+                        <Grid Grid.Row="0" Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="999" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.4"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M5 12l4 4 10-10"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Exclusive accent themes" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
+                                <TextBlock Text="Settings → Appearance" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Perk 3 -->
+                        <Grid Grid.Row="2" Grid.Column="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="999" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.4"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M5 12l4 4 10-10"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Early access to beta builds" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
+                                <TextBlock Text="Settings → Mods &amp; updates" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Perk 4 -->
+                        <Grid Grid.Row="2" Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="999" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.4"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M5 12l4 4 10-10"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Priority support" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
+                                <TextBlock Text="Faster help, straight from us" FontSize="12" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- FAQ: collapsible accordion covering perks and early-access updates. -->
+            <Border Style="{StaticResource Card}" Padding="12,10" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Frequently asked questions" FontSize="15" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="10,6,10,4" />
+
+                    <Expander Style="{StaticResource FaqItem}" Header="What do I get as a supporter?">
+                        <TextBlock Style="{StaticResource FaqAnswer}"
+                                   Text="Four perks: a supporter badge, exclusive accent themes, early access to beta builds, and priority support. They're cosmetic and convenience only — every mod-management feature stays free for everyone." />
+                    </Expander>
+                    <Border Style="{StaticResource FaqDivider}" />
+                    <Expander Style="{StaticResource FaqItem}" Header="How do I get early access to new updates?">
+                        <TextBlock Style="{StaticResource FaqAnswer}"
+                                   Text="Open Settings → Mods &amp; updates and switch on Early access. Lodestone will then pick up beta builds the moment they're published, so you try new features and fixes before the stable release." />
+                    </Expander>
+                    <Border Style="{StaticResource FaqDivider}" />
+                    <Expander Style="{StaticResource FaqItem}" Header="Where do I change my accent theme?">
+                        <TextBlock Style="{StaticResource FaqAnswer}"
+                                   Text="In Settings → Appearance. Your supporter status unlocks the full set of exclusive accents — pick one any time and it applies instantly." />
+                    </Expander>
+                    <Border Style="{StaticResource FaqDivider}" />
+                    <Expander Style="{StaticResource FaqItem}" Header="Do I keep my perks if I cancel on Patreon?">
+                        <TextBlock Style="{StaticResource FaqAnswer}"
+                                   Text="Yes. Once you've redeemed a code your perks stay unlocked — cancel any time. If they ever disappear, just generate and redeem a fresh code from our website." />
+                    </Expander>
+                    <Border Style="{StaticResource FaqDivider}" />
+                    <Expander Style="{StaticResource FaqItem}" Header="Is anything about managing mods locked behind supporting?">
+                        <TextBlock Style="{StaticResource FaqAnswer}"
+                                   Text="Never. Installing, updating and organising your mods is completely free for everyone. Supporting is optional and only adds the cosmetic perks above — plus our genuine thanks." />
+                    </Expander>
+                </StackPanel>
+            </Border>
+
+            <!-- Actions: one aligned row — primary/secondary calls-to-action on the left, the quiet
+                 "remove" action pushed to the right so every button shares a single baseline. -->
+            <Grid Margin="2,20,2,2">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button Content="Visit our website" Style="{StaticResource PrimaryButton}" Height="40" Command="{Binding OpenWebsiteCommand}" />
+                    <Button Content="Priority support" Style="{StaticResource SecondaryButton}" Height="40" Margin="10,0,0,0" Command="{Binding OpenPrioritySupportCommand}" />
+                </StackPanel>
+                <Button Content="Remove supporter code" Style="{StaticResource SecondaryButton}" Height="40"
+                        Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right" Command="{Binding RemoveCodeCommand}" />
+            </Grid>
+
         </StackPanel>
 
     </StackPanel>
