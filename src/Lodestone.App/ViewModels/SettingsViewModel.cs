@@ -19,10 +19,21 @@ public sealed partial class AccentSwatchViewModel(AccentOption option, bool unlo
     public string Name { get; } = option.Name;
     public string Hex { get; } = option.Hex;
     public bool SupporterOnly { get; } = option.SupporterOnly;
-    public Brush Swatch { get; } = new SolidColorBrush(AccentApplier.Parse(option.Hex));
+
+    // Frozen so the brush carries no thread affinity: the swatch is a fixed palette colour (only the shared
+    // AccentBrush is mutated for live re-colouring), so it's safe to freeze — and a frozen brush can be
+    // created and bound from any thread, immune to WPF's "DependencySource on same Thread" cross-thread trap.
+    public Brush Swatch { get; } = Frozen(AccentApplier.Parse(option.Hex));
 
     [ObservableProperty] private bool _isSelected = selected;
     [ObservableProperty] private bool _isLocked = option.SupporterOnly && !unlocked;
+
+    private static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
 }
 
 /// <summary>The Settings screen — every control is wired to <see cref="LodestoneSettings"/> and saved on change.</summary>
@@ -66,11 +77,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         _ready = true;
 
         // Keep the screen in sync when the folder/settings are changed elsewhere (e.g. the shell banner).
-        _settings.Changed += (_, _) =>
+        // SaveAsync raises Changed on a thread-pool thread (it awaits the file write with ConfigureAwait(false)),
+        // so marshal back onto the UI thread before rebuilding bound state — RebuildAccents creates the swatch
+        // brushes, and any DependencyObject bound to the UI must be created on the UI thread.
+        _settings.Changed += (_, _) => _ui.Post(() =>
         {
             ReloadFromSettings();
             OnPropertyChanged(nameof(IsGameReady));
-        };
+        });
 
         // Re-evaluate supporter-gated perks when status changes (redeem/revoke on the Support page).
         _supporter.Changed += (_, _) => _ui.Post(OnSupporterChanged);
