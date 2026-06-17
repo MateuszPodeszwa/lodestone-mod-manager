@@ -56,5 +56,6 @@ public static class CompatibilityRuleSet
         new LoaderMismatchRule(),
         new DuplicateRule(),
         new OrphanLibraryRule(),
+        new UnsortedContentRule(),
     ];
 }

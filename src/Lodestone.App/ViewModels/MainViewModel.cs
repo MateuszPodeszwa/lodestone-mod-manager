@@ -118,7 +118,7 @@ public sealed partial class MainViewModel : ObservableObject
         // Auto-discovery: import any mods already sitting in the game folders before showing the library.
         if (IsGameReady)
         {
-            await _reconcile.ExecuteAsync(ResolveTarget()).ConfigureAwait(true);
+            AnnounceImport(await _reconcile.ExecuteAsync(ResolveTarget()).ConfigureAwait(true));
         }
 
         // Local state loads fast; await it so the first screen is populated.
@@ -166,7 +166,7 @@ public sealed partial class MainViewModel : ObservableObject
         _bus.Publish(new ToastMessage("Minecraft folder set", picked));
 
         GameVersion? version = ResolveTarget();
-        await _reconcile.ExecuteAsync(version).ConfigureAwait(true);
+        AnnounceImport(await _reconcile.ExecuteAsync(version).ConfigureAwait(true));
         Loader defaultLoader = _settings.Current.DefaultLoader;
         if (version is { } loaderVersion
             && _loaderInstaller.Supports(defaultLoader)
@@ -306,6 +306,16 @@ public sealed partial class MainViewModel : ObservableObject
         ShowOnboarding = false;
         _bus.Publish(new ToastMessage("Welcome to Lodestone", "Drag any mod, pack or shader here to install it"));
         _bus.Publish(new LibraryChanged());
+    }
+
+    // A gentle heads-up that pre-existing content was adopted from the game folder into the library.
+    private void AnnounceImport(Result<int> imported)
+    {
+        if (imported.IsSuccess && imported.Value > 0)
+        {
+            _bus.Publish(new ToastMessage("Imported existing content",
+                $"Added {imported.Value} item{(imported.Value == 1 ? string.Empty : "s")} already in your game folder to your library."));
+        }
     }
 
     private void RefreshSupporter() => OnPropertyChanged(nameof(IsSupporter));

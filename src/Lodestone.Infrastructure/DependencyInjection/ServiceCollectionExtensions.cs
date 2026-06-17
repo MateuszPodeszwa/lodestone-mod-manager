@@ -114,6 +114,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICompatibilityRule, LoaderMismatchRule>();
         services.AddSingleton<ICompatibilityRule, DuplicateRule>();
         services.AddSingleton<ICompatibilityRule, OrphanLibraryRule>();
+        services.AddSingleton<ICompatibilityRule, UnsortedContentRule>();
         services.AddSingleton<ICompatibilityService, CompatibilityService>();
 
         // ---- Catalog + use-cases ----

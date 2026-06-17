@@ -23,19 +23,22 @@ public sealed class ReconcileLibraryUseCase
     private readonly IArchiveMetadataReader _reader;
     private readonly ISettingsStore _settings;
     private readonly IGameLocator _locator;
+    private readonly IGameInventory _inventory;
 
     public ReconcileLibraryUseCase(
         IInstalledContentRepository repository,
         IContentInstaller installer,
         IArchiveMetadataReader reader,
         ISettingsStore settings,
-        IGameLocator locator)
+        IGameLocator locator,
+        IGameInventory inventory)
     {
         _repository = repository;
         _installer = installer;
         _reader = reader;
         _settings = settings;
         _locator = locator;
+        _inventory = inventory;
     }
 
     public async Task<Result<int>> ExecuteAsync(GameVersion? targetVersion, CancellationToken ct = default)
@@ -50,6 +53,10 @@ public sealed class ReconcileLibraryUseCase
             .Where(i => !string.IsNullOrWhiteSpace(i.FileName))
             .Select(i => BaseName(i.FileName!))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // The installed (version + loader) profiles, read once: used to attribute a mod to a version only
+        // when there's exactly one profile for its loader (otherwise it's left "Unknown" for the user to sort).
+        IReadOnlyList<LoaderProfile> profiles = _inventory.InstalledProfiles();
 
         int imported = 0;
 
@@ -75,14 +82,25 @@ public sealed class ReconcileLibraryUseCase
                     : Slug.PrettifyFileName(Path.GetFileNameWithoutExtension(baseName));
 
                 Loader loader = Loader.None;
+                List<GameVersion> versions;
                 if (type.UsesLoader())
                 {
-                    loader = meta is { LoadersOrEmpty.Count: > 0 } ? meta.LoadersOrEmpty[0] : _settings.Current.DefaultLoader;
-                }
+                    // The loader is reliable from the jar; without it we can't even narrow the version.
+                    bool loaderKnown = meta is { LoadersOrEmpty.Count: > 0 };
+                    loader = loaderKnown ? meta!.LoadersOrEmpty[0] : Loader.None;
 
-                List<GameVersion> versions = meta is { GameVersionsOrEmpty.Count: > 0 }
-                    ? meta.GameVersionsOrEmpty.ToList()
-                    : targetVersion is not null ? [targetVersion] : [];
+                    versions =
+                        meta is { GameVersionsOrEmpty.Count: > 0 } ? meta.GameVersionsOrEmpty.ToList()
+                        : loaderKnown && OnlyVersionFor(profiles, loader) is { } only ? [only]
+                        : []; // ambiguous (0 or >1 profiles for this loader) — leave "Unknown" rather than guess wrong
+                }
+                else
+                {
+                    // Packs and shaders are loader-agnostic and version-tolerant — keep the active version as a soft tag.
+                    versions = meta is { GameVersionsOrEmpty.Count: > 0 }
+                        ? meta.GameVersionsOrEmpty.ToList()
+                        : targetVersion is not null ? [targetVersion] : [];
+                }
 
                 string id = !string.IsNullOrWhiteSpace(meta?.ModId) ? meta!.ModId! : Slug.From(name);
                 if (await _repository.FindAsync(id, ct).ConfigureAwait(false) is not null)
@@ -119,6 +137,13 @@ public sealed class ReconcileLibraryUseCase
         }
 
         return Result.Success(imported);
+    }
+
+    // The single installed game version for this loader, or null when there are none or several (ambiguous).
+    private static GameVersion? OnlyVersionFor(IReadOnlyList<LoaderProfile> profiles, Loader loader)
+    {
+        List<GameVersion> versions = profiles.Where(p => p.Loader == loader).Select(p => p.GameVersion).Distinct().ToList();
+        return versions.Count == 1 ? versions[0] : null;
     }
 
     private static string BaseName(string fileName)

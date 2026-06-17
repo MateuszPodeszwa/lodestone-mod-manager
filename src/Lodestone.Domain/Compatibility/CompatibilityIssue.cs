@@ -21,6 +21,7 @@ public enum CompatibilityKind
     LoaderMismatch,
     Duplicate,
     OrphanLibrary,
+    Unsorted,
 }
 
 /// <summary>

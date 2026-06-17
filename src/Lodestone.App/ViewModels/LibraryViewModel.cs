@@ -25,6 +25,7 @@ public sealed record ProfileOption(string Key, string Label);
 public sealed partial class LibraryViewModel : ObservableObject
 {
     private const string AllKey = "all";
+    private const string UnknownKey = "unknown";
 
     private readonly IInstalledContentRepository _repository;
     private readonly ICompatibilityService _compatibility;
@@ -101,6 +102,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     // only that profile's mods are live. "All profiles" just re-filters the view and touches nothing.
     private async Task ApplyProfileAsync(string key)
     {
+        if (key == UnknownKey)
+        {
+            // A view-only bucket for unattributed content — never changes the active profile or touches disk.
+            Rebuild();
+            return;
+        }
+
         (string version, Loader loader) = Parse(key);
 
         LodestoneSettings s = _settings.Current.Clone();
@@ -160,6 +168,12 @@ public sealed partial class LibraryViewModel : ObservableObject
             .Where(p => !p.IsVanilla)
             .Select(p => new ProfileOption(p.Key, p.Label)));
 
+        // A bucket for adopted mods Lodestone couldn't attribute to a version — only shown when some exist.
+        if (_all.Any(i => i.Type.UsesLoader() && i.GameVersions.Count == 0))
+        {
+            desired.Add(new ProfileOption(UnknownKey, "Unknown (needs sorting)"));
+        }
+
         string target = desired.Any(o => o.Key.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))
             ? SelectedProfileKey
             : AllKey;
@@ -194,16 +208,28 @@ public sealed partial class LibraryViewModel : ObservableObject
             _ => ContentType.Mod,
         };
 
-        (string versionValue, Loader loader) = Parse(SelectedProfileKey);
-        bool allProfiles = versionValue is AllKey or "";
-        GameVersion? version = allProfiles ? null : GameVersion.Create(versionValue).Match<GameVersion?>(v => v, _ => null);
+        bool allProfiles;
+        IReadOnlyList<InstalledContent> filtered;
+        if (SelectedProfileKey == UnknownKey)
+        {
+            // The "Unknown" bucket: items of this type with no attributed version, for manual sorting.
+            allProfiles = false;
+            string? search = string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch;
+            filtered = _all.Where(i => i.Type == type && i.GameVersions.Count == 0 && Matches(i, search)).ToList();
+        }
+        else
+        {
+            (string versionValue, Loader loader) = Parse(SelectedProfileKey);
+            allProfiles = versionValue is AllKey or "";
+            GameVersion? version = allProfiles ? null : GameVersion.Create(versionValue).Match<GameVersion?>(v => v, _ => null);
 
-        var filter = new LibraryFilter(
-            type,
-            version,
-            string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch,
-            allProfiles ? null : loader);
-        IReadOnlyList<InstalledContent> filtered = LibraryQuery.Apply(_all, filter);
+            var filter = new LibraryFilter(
+                type,
+                version,
+                string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch,
+                allProfiles ? null : loader);
+            filtered = LibraryQuery.Apply(_all, filter);
+        }
 
         Items.Clear();
         foreach (InstalledContent item in filtered)
@@ -239,6 +265,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         int bar = key.IndexOf('|');
         return bar < 0 ? (key, Loader.None) : (key[..bar], key[(bar + 1)..].ParseLoader());
     }
+
+    private static bool Matches(InstalledContent item, string? search)
+        => search is null
+           || item.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+           || item.Author.Contains(search, StringComparison.OrdinalIgnoreCase);
 
     private async Task ToggleAsync(string id)
     {

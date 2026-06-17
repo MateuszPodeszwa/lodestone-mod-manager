@@ -179,6 +179,26 @@ public class CompatibilityServiceTests
     }
 
     [Fact]
+    public void Unattributed_mod_is_flagged_for_sorting_when_versions_are_installed()
+    {
+        var mystery = Make.Mod("mystery", versions: []); // no declared version → couldn't be attributed
+
+        var report = AnalyzeInstalled("mystery", ["1.20.1"], mystery);
+
+        report.Issues.ShouldContain(i => i.Kind == CompatibilityKind.Unsorted);
+        report.HighestSeverity.ShouldBe(CompatibilitySeverity.Warning);
+    }
+
+    [Fact]
+    public void Unattributed_mod_is_not_flagged_when_nothing_is_installed_to_sort_into()
+    {
+        var mystery = Make.Mod("mystery", versions: []);
+
+        AnalyzeInstalled("mystery", [], mystery).Issues
+            .ShouldNotContain(i => i.Kind == CompatibilityKind.Unsorted);
+    }
+
+    [Fact]
     public void Duplicate_enabled_copy_is_a_warning()
     {
         var a = Make.Mod("sodium-1", name: "Sodium", projectId: "AANobbMI", versions: ["1.21.4"]);
