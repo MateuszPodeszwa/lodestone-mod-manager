@@ -250,7 +250,8 @@
                                   Data="M12 20s-7-4.7-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.3-7 10-7 10Z" />
                         </Border>
                         <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
-                            <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="999" Padding="9,3" HorizontalAlignment="Left">
+                            <!-- Matches the title-bar supporter badge: rectangular r6, not a full pill -->
+                            <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="6" Padding="9,3" HorizontalAlignment="Left">
                                 <TextBlock Text="Supporter" Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="SemiBold" />
                             </Border>
                             <TextBlock Text="{Binding ThanksHeadline}" FontSize="22" FontWeight="Bold"
