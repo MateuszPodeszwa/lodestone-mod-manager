@@ -38,7 +38,9 @@
                     <Grid Margin="18,16">
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Loader version" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
-                            <TextBlock Text="{Binding LoaderHintText}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="430" />
+                            <!-- Left-aligned so MaxWidth doesn't centre it (a Stretch element clamped by MaxWidth
+                                 is centred by WPF, which looked like a large left margin under the title). -->
+                            <TextBlock Text="{Binding LoaderHintText}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="430" HorizontalAlignment="Left" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" IsEnabled="{Binding CanManageLoaders}">
                             <TextBlock Text="Minecraft" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
