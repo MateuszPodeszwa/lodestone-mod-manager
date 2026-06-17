@@ -22,6 +22,39 @@ public class CompatibilityIssueTests
         CompatibilityIssue.Info(CompatibilityKind.OrphanLibrary, "x").Severity
             .ShouldBe(CompatibilitySeverity.Info);
     }
+
+    [Theory]
+    [InlineData(CompatibilityKind.MissingDependency, "Fabric API", "Requires Fabric API")]
+    [InlineData(CompatibilityKind.DisabledDependency, "Fabric API", "Fabric API disabled")]
+    [InlineData(CompatibilityKind.OutdatedDependency, "Fabric API", "Fabric API outdated")]
+    [InlineData(CompatibilityKind.UnknownDependency, "Some Mod", "Unverified: Some Mod")]
+    [InlineData(CompatibilityKind.Conflict, "OptiFine", "Incompatible with OptiFine")]
+    public void ShortLabel_names_the_related_mod_when_present(CompatibilityKind kind, string related, string expected)
+        => new CompatibilityIssue(CompatibilitySeverity.Warning, kind, "full message", related)
+            .ShortLabel.ShouldBe(expected);
+
+    [Theory]
+    [InlineData(CompatibilityKind.GameVersionMismatch, "Wrong MC version")]
+    [InlineData(CompatibilityKind.GameVersionNotInstalled, "Version not installed")]
+    [InlineData(CompatibilityKind.LoaderMismatch, "Wrong loader")]
+    [InlineData(CompatibilityKind.Duplicate, "Duplicate")]
+    [InlineData(CompatibilityKind.OrphanLibrary, "Library unused")]
+    [InlineData(CompatibilityKind.Unsorted, "Unsorted")]
+    public void ShortLabel_uses_a_kind_only_phrase_when_no_related_mod(CompatibilityKind kind, string expected)
+        => new CompatibilityIssue(CompatibilitySeverity.Warning, kind, "full message").ShortLabel.ShouldBe(expected);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ShortLabel_falls_back_to_a_kind_phrase_when_related_name_is_blank(string? related)
+        => new CompatibilityIssue(CompatibilitySeverity.Error, CompatibilityKind.MissingDependency, "msg", related)
+            .ShortLabel.ShouldBe("Missing dependency");
+
+    [Fact]
+    public void ShortLabel_trims_whitespace_around_the_related_name()
+        => new CompatibilityIssue(CompatibilitySeverity.Error, CompatibilityKind.Conflict, "msg", "  Sodium  ")
+            .ShortLabel.ShouldBe("Incompatible with Sodium");
 }
 
 public class CompatibilityReportTests

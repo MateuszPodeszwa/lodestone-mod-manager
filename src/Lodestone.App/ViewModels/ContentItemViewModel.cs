@@ -6,7 +6,7 @@ using Lodestone.Domain.Compatibility;
 
 namespace Lodestone.App.ViewModels;
 
-/// <summary>A single row in "My Content": the item plus its compatibility verdict shown as a symbol.</summary>
+/// <summary>A single row in "My Content": the item plus its compatibility issues, each shown as a labelled badge.</summary>
 public sealed partial class ContentItemViewModel : ObservableObject
 {
     private readonly InstalledContent _model;
@@ -28,7 +28,9 @@ public sealed partial class ContentItemViewModel : ObservableObject
         _onUninstall = onUninstall;
         _onAssign = onAssign;
         AssignTargets = assignTargets;
-        Report = report;
+        Issues = report is { HasIssues: true }
+            ? report.Issues.OrderByDescending(i => i.Severity).ToList()
+            : [];
         ShowVersions = showVersions;
         _enabled = model.Enabled;
     }
@@ -80,30 +82,15 @@ public sealed partial class ContentItemViewModel : ObservableObject
     private bool _enabled;
 
     // ---- compatibility verdict ----
-    public CompatibilityReport? Report { get; }
 
-    public bool HasIssues => Report?.HasIssues == true;
+    /// <summary>
+    /// Every problem found for this item, worst severity first. Each is rendered as its own labelled
+    /// badge next to the name (<see cref="CompatibilityIssue.ShortLabel"/>), with the full
+    /// <see cref="CompatibilityIssue.Message"/> in the badge's tooltip.
+    /// </summary>
+    public IReadOnlyList<CompatibilityIssue> Issues { get; }
 
-    /// <summary>The mark drawn inside the severity badge ("!" for problems, "i" for info).</summary>
-    public string IssueMark => Report?.HighestSeverity switch
-    {
-        CompatibilitySeverity.Error => "!",
-        CompatibilitySeverity.Warning => "!",
-        CompatibilitySeverity.Info => "i",
-        _ => string.Empty,
-    };
-
-    public string IssueSeverity => Report?.HighestSeverity switch
-    {
-        CompatibilitySeverity.Error => "error",
-        CompatibilitySeverity.Warning => "warning",
-        CompatibilitySeverity.Info => "info",
-        _ => "none",
-    };
-
-    public string IssueTooltip => Report is null || !Report.HasIssues
-        ? string.Empty
-        : string.Join(Environment.NewLine, Report.Issues.Select(i => "• " + i.Message));
+    public bool HasIssues => Issues.Count > 0;
 
     [RelayCommand]
     private Task ToggleAsync() => _onToggle(Id);

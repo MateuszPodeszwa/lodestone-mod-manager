@@ -63,7 +63,9 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="DangerSoftBrush" Color="#24E2503F" />
     <SolidColorBrush x:Key="WarningBrush" Color="#FFE3B341" />
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#24E3B341" />
     <SolidColorBrush x:Key="InfoBrush" Color="#FF5A91C2" />
+    <SolidColorBrush x:Key="InfoSoftBrush" Color="#245A91C2" />
 
     <!-- Brushes: text -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
