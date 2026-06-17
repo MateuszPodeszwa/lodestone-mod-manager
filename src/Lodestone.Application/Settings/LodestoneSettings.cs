@@ -58,6 +58,10 @@ public sealed class LodestoneSettings
     /// <summary>The game-version profile currently selected in the UI.</summary>
     public string SelectedVersion { get; set; } = DefaultSelectedVersion;
 
+    /// <summary>The loader half of the active profile (pairs with <see cref="SelectedVersion"/>).
+    /// <see cref="Loader.None"/> on the "All" view, where no single profile is active on disk.</summary>
+    public Loader SelectedLoader { get; set; } = Loader.None;
+
     /// <summary>Optional accent colour override (a supporter cosmetic perk); null = default green.</summary>
     public string? AccentColor { get; set; }
 

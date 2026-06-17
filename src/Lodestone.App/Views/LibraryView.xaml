@@ -12,14 +12,9 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <TextBlock Text="Profile" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                <ComboBox Width="150" Style="{StaticResource DarkComboBox}" ItemContainerStyle="{StaticResource DarkComboBoxItem}"
-                          ItemsSource="{Binding Versions}" SelectedItem="{Binding McVersion, Mode=TwoWay}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource VersionLabel}}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                <ComboBox Width="200" Style="{StaticResource DarkComboBox}" ItemContainerStyle="{StaticResource DarkComboBoxItem}"
+                          ItemsSource="{Binding Profiles}" DisplayMemberPath="Label"
+                          SelectedValuePath="Key" SelectedValue="{Binding SelectedProfileKey, Mode=TwoWay}" />
             </StackPanel>
         </Grid>
 

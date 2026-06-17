@@ -13,14 +13,24 @@ using Lodestone.Domain.Compatibility;
 
 namespace Lodestone.App.ViewModels;
 
-/// <summary>"My Content": per-version profiles, type tabs, search, toggle/uninstall, and the
-/// compatibility symbols produced by the rule engine.</summary>
+/// <summary>One entry in the My Content profile selector: a stable key and its display label.</summary>
+public sealed record ProfileOption(string Key, string Label);
+
+/// <summary>
+/// "My Content": switch between installed (version + loader) profiles, type tabs, search,
+/// toggle/uninstall, and the compatibility symbols from the rule engine. Selecting a concrete profile
+/// swaps the shared mods/ folder so only that profile's mods are live (other loaders/versions are set
+/// aside, reversibly); "All profiles" is a view-only filter that changes nothing on disk.
+/// </summary>
 public sealed partial class LibraryViewModel : ObservableObject
 {
+    private const string AllKey = "all";
+
     private readonly IInstalledContentRepository _repository;
     private readonly ICompatibilityService _compatibility;
     private readonly ToggleContentUseCase _toggle;
     private readonly UninstallContentUseCase _uninstall;
+    private readonly SwitchProfileUseCase _switch;
     private readonly ISettingsStore _settings;
     private readonly IMessageBus _bus;
     private readonly IUiDispatcher _ui;
@@ -29,13 +39,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     private IReadOnlyList<InstalledContent> _all = [];
     private IReadOnlyList<GameVersion> _installedVersions = [];
     private IReadOnlyDictionary<string, CompatibilityReport> _reports = new Dictionary<string, CompatibilityReport>();
-    private bool _suppressReload;
+    private bool _suppressSwitch;
 
     public LibraryViewModel(
         IInstalledContentRepository repository,
         ICompatibilityService compatibility,
         ToggleContentUseCase toggle,
         UninstallContentUseCase uninstall,
+        SwitchProfileUseCase switchProfile,
         ISettingsStore settings,
         IMessageBus bus,
         IUiDispatcher ui,
@@ -45,21 +56,22 @@ public sealed partial class LibraryViewModel : ObservableObject
         _compatibility = compatibility;
         _toggle = toggle;
         _uninstall = uninstall;
+        _switch = switchProfile;
         _settings = settings;
         _bus = bus;
         _ui = ui;
         _inventory = inventory;
-        _mcVersion = settings.Current.SelectedVersion;
+        _selectedProfileKey = KeyFor(settings.Current);
         bus.Subscribe<LibraryChanged>(m => _ui.Post(() => _ = LoadAsync()));
     }
 
-    /// <summary>The version filter options: "All versions" plus whatever is actually installed (newest first).</summary>
-    public ObservableCollection<string> Versions { get; } = ["all"];
+    /// <summary>"All profiles" plus every installed (version + loader) profile, newest first.</summary>
+    public ObservableCollection<ProfileOption> Profiles { get; } = [new(AllKey, "All profiles")];
 
     public ObservableCollection<ContentItemViewModel> Items { get; } = [];
 
     [ObservableProperty] private string _libTab = "mods";
-    [ObservableProperty] private string _mcVersion;
+    [ObservableProperty] private string _selectedProfileKey;
     [ObservableProperty] private string _libSearch = string.Empty;
     [ObservableProperty] private string _countLabel = string.Empty;
     [ObservableProperty] private bool _isEmpty;
@@ -68,31 +80,59 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     partial void OnLibSearchChanged(string value) => Rebuild();
 
-    partial void OnMcVersionChanged(string value)
+    partial void OnSelectedProfileKeyChanged(string value)
     {
-        // A transient null/empty can arrive while the dropdown's ItemsSource is being rebuilt — ignore it.
-        if (string.IsNullOrEmpty(value))
+        // A transient null/empty can arrive while the dropdown's ItemsSource is rebuilt — ignore it.
+        if (string.IsNullOrEmpty(value) || _suppressSwitch)
         {
             return;
         }
 
-        LodestoneSettings updated = _settings.Current.Clone();
-        updated.SelectedVersion = value;
-        _ = _settings.SaveAsync(updated);
+        _ = ApplyProfileAsync(value);
+    }
 
-        if (!_suppressReload)
+    // Persists the chosen profile and, when it's a concrete (version + loader), swaps the mods/ folder so
+    // only that profile's mods are live. "All profiles" just re-filters the view and touches nothing.
+    private async Task ApplyProfileAsync(string key)
+    {
+        (string version, Loader loader) = Parse(key);
+
+        LodestoneSettings s = _settings.Current.Clone();
+        s.SelectedVersion = version;
+        s.SelectedLoader = loader;
+        if (loader != Loader.None)
         {
-            _ = LoadAsync();
+            s.DefaultLoader = loader; // installs and Browse follow the active profile's loader
         }
+
+        await _settings.SaveAsync(s).ConfigureAwait(true);
+
+        if (loader != Loader.None &&
+            GameVersion.Create(version).Match<GameVersion?>(v => v, _ => null) is { } gameVersion)
+        {
+            Result<ProfileSwitch> switched = await _switch.ExecuteAsync(gameVersion, loader).ConfigureAwait(true);
+            if (switched.IsFailure)
+            {
+                _bus.Publish(new ToastMessage("Couldn't switch profile", switched.Error.Message, ToastKind.Error));
+            }
+            else if (switched.Value.Enabled + switched.Value.Disabled > 0)
+            {
+                _bus.Publish(new ToastMessage(
+                    $"Switched to {version} · {loader.ToDisplayName()}",
+                    $"{switched.Value.Enabled} mod(s) active, {switched.Value.Disabled} set aside."));
+            }
+        }
+
+        _bus.Publish(new LibraryChanged()); // refresh Home/Browse against the new active profile
+        await LoadAsync().ConfigureAwait(true);
     }
 
     public async Task LoadAsync()
     {
         _all = await _repository.GetAllAsync().ConfigureAwait(true);
-        RefreshVersionOptions();
+        RefreshProfileOptions();
 
         GameVersion? activeVersion = ActiveProfile.Selected(_settings.Current);
-
         _reports = _compatibility.Analyze(new CompatibilityContext(_all, activeVersion, _settings.Current.DefaultLoader)
         {
             InstalledGameVersions = _installedVersions,
@@ -100,40 +140,39 @@ public sealed partial class LibraryViewModel : ObservableObject
         Rebuild();
     }
 
-    // Rebuilds the dropdown from the installed versions and repairs a stale stored selection — so the
-    // list only ever offers versions the user actually has, never the old hardcoded set.
-    private void RefreshVersionOptions()
+    // Rebuilds the selector from the installed profiles and repairs a stale stored selection — so the
+    // list only ever offers profiles the user actually has a loader installed for.
+    private void RefreshProfileOptions()
     {
         _installedVersions = _inventory.InstalledVersions();
 
-        var desired = new List<string> { "all" };
-        desired.AddRange(_installedVersions.Select(v => v.Value));
+        var desired = new List<ProfileOption> { new(AllKey, "All profiles") };
+        desired.AddRange(_inventory.InstalledProfiles()
+            .Where(p => !p.IsVanilla)
+            .Select(p => new ProfileOption(p.Key, p.Label)));
 
-        bool installedSelection =
-            _installedVersions.Any(v => v.Value.Equals(_mcVersion, StringComparison.OrdinalIgnoreCase));
-        string target = _mcVersion == "all" || installedSelection
-            ? _mcVersion
-            : _installedVersions.Count > 0 ? _installedVersions[0].Value : "all";
+        string target = desired.Any(o => o.Key.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))
+            ? SelectedProfileKey
+            : AllKey;
 
-        _suppressReload = true;
+        _suppressSwitch = true;
         try
         {
-            if (!Versions.SequenceEqual(desired, StringComparer.OrdinalIgnoreCase))
+            if (!Profiles.Select(p => p.Key).SequenceEqual(desired.Select(p => p.Key), StringComparer.OrdinalIgnoreCase))
             {
-                Versions.Clear();
-                foreach (string version in desired)
+                Profiles.Clear();
+                foreach (ProfileOption option in desired)
                 {
-                    Versions.Add(version);
+                    Profiles.Add(option);
                 }
             }
 
-            // Re-assert the selection (the rebuild above can clear the bound SelectedItem) and persist
-            // a repaired value when the previous selection is no longer installed.
-            McVersion = target;
+            // Re-assert the selection (clearing the list above can null the bound SelectedValue).
+            SelectedProfileKey = target;
         }
         finally
         {
-            _suppressReload = false;
+            _suppressSwitch = false;
         }
     }
 
@@ -146,17 +185,22 @@ public sealed partial class LibraryViewModel : ObservableObject
             _ => ContentType.Mod,
         };
 
-        bool allVersions = _mcVersion is "all" or "";
-        GameVersion? version = allVersions ? null : GameVersion.Create(_mcVersion).Match<GameVersion?>(v => v, _ => null);
+        (string versionValue, Loader loader) = Parse(SelectedProfileKey);
+        bool allProfiles = versionValue is AllKey or "";
+        GameVersion? version = allProfiles ? null : GameVersion.Create(versionValue).Match<GameVersion?>(v => v, _ => null);
 
-        var filter = new LibraryFilter(type, version, string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch);
+        var filter = new LibraryFilter(
+            type,
+            version,
+            string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch,
+            allProfiles ? null : loader);
         IReadOnlyList<InstalledContent> filtered = LibraryQuery.Apply(_all, filter);
 
         Items.Clear();
         foreach (InstalledContent item in filtered)
         {
             _reports.TryGetValue(item.Id, out CompatibilityReport? report);
-            Items.Add(new ContentItemViewModel(item, report, allVersions, ToggleAsync, UninstallAsync));
+            Items.Add(new ContentItemViewModel(item, report, allProfiles, ToggleAsync, UninstallAsync));
         }
 
         string tabLabel = _libTab switch
@@ -165,8 +209,26 @@ public sealed partial class LibraryViewModel : ObservableObject
             "shaders" => "shaders",
             _ => "mods",
         };
-        CountLabel = $"{Items.Count} {tabLabel}" + (allVersions ? string.Empty : $"   ·   {_mcVersion}");
+        string profileLabel = Profiles
+            .FirstOrDefault(p => p.Key.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))?.Label ?? "All profiles";
+        CountLabel = $"{Items.Count} {tabLabel}" + (allProfiles ? string.Empty : $"   ·   {profileLabel}");
         IsEmpty = Items.Count == 0;
+    }
+
+    private static string KeyFor(LodestoneSettings s)
+        => ActiveProfile.IsAllVersions(s.SelectedVersion) || s.SelectedLoader == Loader.None
+            ? AllKey
+            : $"{s.SelectedVersion}|{s.SelectedLoader.ToSlug()}";
+
+    private static (string Version, Loader Loader) Parse(string key)
+    {
+        if (string.IsNullOrEmpty(key) || key == AllKey)
+        {
+            return (AllKey, Loader.None);
+        }
+
+        int bar = key.IndexOf('|');
+        return bar < 0 ? (key, Loader.None) : (key[..bar], key[(bar + 1)..].ParseLoader());
     }
 
     private async Task ToggleAsync(string id)
