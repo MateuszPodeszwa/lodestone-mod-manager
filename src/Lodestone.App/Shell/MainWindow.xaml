@@ -26,14 +26,8 @@
         <Border Grid.Row="0" Background="{StaticResource TitleBarBgBrush}" BorderBrush="{StaticResource BorderFaintBrush}" BorderThickness="0,0,0,1">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                    <Border Width="24" Height="24" CornerRadius="6">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#6FCE80" Offset="0" />
-                                <GradientStop Color="#46A85A" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Path Width="15" Height="15" Stretch="Uniform" Stroke="#0E2B16" StrokeThickness="2"
+                    <Border Width="24" Height="24" CornerRadius="6" Background="{StaticResource AccentTileBrush}">
+                        <Path Width="15" Height="15" Stretch="Uniform" Stroke="{StaticResource AccentTextBrush}" StrokeThickness="2"
                               StrokeLineJoin="Round" Data="M12 3 4 7v10l8 4 8-4V7z M4 7l8 4 8-4 M12 11v10" />
                     </Border>
                     <!-- Supporter badge sits before the title; rectangular corners (r6) match the adjacent logo tile -->

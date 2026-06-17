@@ -9,13 +9,8 @@
             <StackPanel>
                 <!-- Step 0 -->
                 <StackPanel Visibility="{Binding IsStep0, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center">
-                    <Border Width="64" Height="64" CornerRadius="17" HorizontalAlignment="Center">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#6FCE80" Offset="0" /><GradientStop Color="#46A85A" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Path Width="34" Height="34" Stretch="Uniform" Stroke="#0E2B16" StrokeThickness="2" StrokeLineJoin="Round" Data="M12 3 4 7v10l8 4 8-4V7z M4 7l8 4 8-4 M12 11v10" />
+                    <Border Width="64" Height="64" CornerRadius="17" HorizontalAlignment="Center" Background="{StaticResource AccentTileBrush}">
+                        <Path Width="34" Height="34" Stretch="Uniform" Stroke="{StaticResource AccentTextBrush}" StrokeThickness="2" StrokeLineJoin="Round" Data="M12 3 4 7v10l8 4 8-4V7z M4 7l8 4 8-4 M12 11v10" />
                     </Border>
                     <TextBlock Text="Welcome to Lodestone" FontSize="23" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,18,0,0" />
                     <TextBlock Text="The simplest way to install and manage your Minecraft mods, resource packs and shaders. No config files, ever." FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0" />
@@ -28,7 +23,7 @@
                                Visibility="{Binding IsGameDetected, Converter={StaticResource BoolToVis}}" />
                     <TextBlock Text="We couldn't find it automatically — choose your .minecraft folder to continue." FontSize="14" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,7,0,0"
                                Visibility="{Binding IsGameDetected, Converter={StaticResource InvBoolToVis}}" />
-                    <Border Background="{StaticResource AccentFaintBrush}" BorderBrush="#405AC26D" BorderThickness="1" CornerRadius="11" Padding="16,14" Margin="0,20,0,0">
+                    <Border Background="{StaticResource AccentFaintBrush}" BorderBrush="{StaticResource AccentBorderBrush}" BorderThickness="1" CornerRadius="11" Padding="16,14" Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal">
                             <Border Width="30" Height="30" CornerRadius="15" Background="{StaticResource AccentSoftBrush}">
                                 <Path Width="16" Height="16" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="2.4" StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M5 12l4 4 10-10" />

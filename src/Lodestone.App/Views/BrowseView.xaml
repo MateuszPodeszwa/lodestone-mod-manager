@@ -16,7 +16,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="BorderBrush" Value="#735AC26D" />
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{StaticResource AccentBorderBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

@@ -49,10 +49,35 @@ public static class AccentApplier
         SetBrush(res, "AccentSoftBrush", WithAlpha(accent, 0x24));
         SetBrush(res, "AccentFaintBrush", WithAlpha(accent, 0x12));
         SetBrush(res, "AccentTextBrush", ContrastText(accent));
+        SetBrush(res, "AccentBorderBrush", WithAlpha(accent, 0x66));
+
+        // Gradient accent roles. The brushes carry literal default stops in Theme.xaml; here we recolour the
+        // accent-driven stop(s) on the shared instance so every StaticResource consumer updates live too.
+        // The logo/heart tile is a light→dark accent diagonal; the supporter hero only tints its top stop.
+        SetGradientStops(res, "AccentTileBrush", (0, Lighten(accent, 0.12)), (1, Darken(accent, 0.18)));
+        SetGradientStops(res, "AccentHeroBrush", (0, WithAlpha(accent, 0x22)));
+
         if (res.Contains("AccentColor"))
         {
             res["AccentColor"] = accent;
         }
+    }
+
+    /// <summary>The accent currently applied to the app resources (the default before any apply). Lets non-WPF
+    /// surfaces such as the WebView2 description read the same accent the brushes use. Reads it back from
+    /// <c>AccentBrush</c> — the one resource <see cref="Apply"/> always updates — rather than the
+    /// <c>AccentColor</c> token, which is only refreshed when present at the top level.</summary>
+    public static Color CurrentAccent()
+    {
+        ResourceDictionary? res = System.Windows.Application.Current?.Resources;
+        return res?["AccentBrush"] is SolidColorBrush b ? b.Color : Parse(SupporterAccents.DefaultHex);
+    }
+
+    /// <summary>The applied accent as an opaque CSS hex (e.g. "#5AC26D"), for HTML/CSS surfaces.</summary>
+    public static string CurrentAccentHex()
+    {
+        Color c = CurrentAccent();
+        return $"#{c.R:X2}{c.G:X2}{c.B:X2}";
     }
 
     public static Color Parse(string hex)
@@ -79,11 +104,34 @@ public static class AccentApplier
         }
     }
 
+    // Recolours specific stops of a shared gradient brush in place; stops left unlisted (e.g. the hero's
+    // card-coloured tail) keep their XAML value. A missing or frozen brush is left untouched so the literal
+    // default in Theme.xaml still stands.
+    private static void SetGradientStops(ResourceDictionary res, string key, params (int Index, Color Color)[] stops)
+    {
+        if (res[key] is LinearGradientBrush brush && !brush.IsFrozen)
+        {
+            foreach ((int index, Color color) in stops)
+            {
+                if (index >= 0 && index < brush.GradientStops.Count)
+                {
+                    brush.GradientStops[index].Color = color;
+                }
+            }
+        }
+    }
+
     private static Color Lighten(Color c, double amount) => Color.FromArgb(
         c.A,
         (byte)(c.R + (255 - c.R) * amount),
         (byte)(c.G + (255 - c.G) * amount),
         (byte)(c.B + (255 - c.B) * amount));
+
+    private static Color Darken(Color c, double amount) => Color.FromArgb(
+        c.A,
+        (byte)(c.R * (1 - amount)),
+        (byte)(c.G * (1 - amount)),
+        (byte)(c.B * (1 - amount)));
 
     private static Color WithAlpha(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
 

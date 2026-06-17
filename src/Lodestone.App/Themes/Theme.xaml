@@ -58,6 +58,18 @@
     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#245AC26D" />
     <SolidColorBrush x:Key="AccentFaintBrush" Color="#125AC26D" />
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="#665AC26D" />
+
+    <!-- Gradient accent roles. Defaults are the prototype greens; AccentApplier recolours the accent-driven
+         stops in place so they track the selected accent live (see Services/AccentApplier.cs). -->
+    <LinearGradientBrush x:Key="AccentTileBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#6FCE80" Offset="0" />
+        <GradientStop Color="#46A85A" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="AccentHeroBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#225AC26D" Offset="0" />
+        <GradientStop Color="{StaticResource CardBgColor}" Offset="0.7" />
+    </LinearGradientBrush>
     <SolidColorBrush x:Key="PinkBrush" Color="{StaticResource PinkColor}" />
     <SolidColorBrush x:Key="PinkSoftBrush" Color="#29E2719A" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />

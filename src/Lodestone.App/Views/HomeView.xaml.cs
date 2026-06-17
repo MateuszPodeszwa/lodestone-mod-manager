@@ -11,7 +11,6 @@ public partial class HomeView : UserControl
 {
     private static readonly Brush IdleBorder = new SolidColorBrush(Color.FromArgb(0x29, 0xFF, 0xFF, 0xFF));
     private static readonly Brush IdleFill = new SolidColorBrush(Color.FromArgb(0x05, 0xFF, 0xFF, 0xFF));
-    private static readonly Brush ActiveFill = new SolidColorBrush(Color.FromArgb(0x1A, 0x5A, 0xC2, 0x6D));
 
     public HomeView()
     {
@@ -44,8 +43,9 @@ public partial class HomeView : UserControl
         e.Handled = true;
         if (hasFiles && active)
         {
+            // Pull the live accent brushes (mutated by AccentApplier) so the highlight follows the chosen accent.
             DropZone.BorderBrush = (Brush)FindResource("AccentBrush");
-            DropZone.Background = ActiveFill;
+            DropZone.Background = (Brush)FindResource("AccentSoftBrush");
         }
     }
 

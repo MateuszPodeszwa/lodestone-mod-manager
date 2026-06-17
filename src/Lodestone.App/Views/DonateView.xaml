@@ -216,7 +216,7 @@
             </Border>
 
             <!-- Info banner -->
-            <Border CornerRadius="11" Background="{StaticResource AccentFaintBrush}" BorderBrush="#335AC26D" BorderThickness="1" Padding="18,15" Margin="0,16,0,0">
+            <Border CornerRadius="11" Background="{StaticResource AccentFaintBrush}" BorderBrush="{StaticResource AccentBorderBrush}" BorderThickness="1" Padding="18,15" Margin="0,16,0,0">
                 <StackPanel Orientation="Horizontal">
                     <Path Width="18" Height="18" VerticalAlignment="Top" Stretch="Uniform" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.8" StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 8h.01 M11 12h1v4h1" />
                     <TextBlock Text="Supporter perks are cosmetic and convenience only — nothing about managing your mods is ever locked behind a payment." FontSize="13" Foreground="#FFB6C9BA" TextWrapping="Wrap" Margin="11,0,0,0" />
@@ -230,23 +230,12 @@
 
             <!-- Hero: a celebratory, accent-themed thank-you that makes supporters feel special. -->
             <Border Style="{StaticResource Card}" Padding="26,24" Margin="0,22,0,0"
-                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                        <GradientStop Color="#225AC26D" Offset="0" />
-                        <GradientStop Color="#FF26262B" Offset="0.7" />
-                    </LinearGradientBrush>
-                </Border.Background>
+                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                    Background="{StaticResource AccentHeroBrush}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Border Width="54" Height="54" CornerRadius="15">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#6FCE80" Offset="0" />
-                                    <GradientStop Color="#46A85A" Offset="1" />
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <Path Width="27" Height="27" Stretch="Uniform" Fill="#12180F"
+                        <Border Width="54" Height="54" CornerRadius="15" Background="{StaticResource AccentTileBrush}">
+                            <Path Width="27" Height="27" Stretch="Uniform" Fill="{StaticResource AccentTextBrush}"
                                   Data="M12 20s-7-4.7-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.3-7 10-7 10Z" />
                         </Border>
                         <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
