@@ -18,8 +18,8 @@
   <!-- Shared package/assembly metadata. -->
   <PropertyGroup>
     <!-- Default version for local/dev builds; CI overrides it from the release tag (see release.yml).
-         Carries the pre-release suffix, so the app reports e.g. "0.1.0-beta" via InformationalVersion. -->
-    <Version>0.1.0-beta</Version>
+         Plain MAJOR.MINOR.PATCH for a stable build; add a -beta/-rc suffix for a pre-release. -->
+    <Version>0.1.2</Version>
     <Authors>Mateusz Podeszwa</Authors>
     <Company>Lodestone</Company>
     <Product>Lodestone Mod Manager</Product>
