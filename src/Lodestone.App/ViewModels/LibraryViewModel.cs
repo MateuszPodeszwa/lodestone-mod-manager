@@ -19,6 +19,9 @@ public sealed record ProfileOption(string Key, string Label);
 /// <summary>One entry in the My Content category filter: the source category slug (or a sentinel) and its label.</summary>
 public sealed record CategoryOption(string Key, string Label);
 
+/// <summary>One non-collapsible category section in the grouped My Content list: an uppercase header and its rows.</summary>
+public sealed record CategorySection(string Header, IReadOnlyList<ContentItemViewModel> Items);
+
 /// <summary>
 /// "My Content": switch between installed (version + loader) profiles, type tabs, search,
 /// toggle/uninstall, and the compatibility symbols from the rule engine. Selecting a concrete profile
@@ -29,7 +32,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 {
     private const string AllKey = "all";
     private const string UnknownKey = "unknown";
-    private const string UncategorizedKey = "uncategorized";
+    private const string UncategorizedKey = LibraryGrouping.UncategorizedKey;
 
     private readonly IInstalledContentRepository _repository;
     private readonly ICompatibilityService _compatibility;
@@ -87,12 +90,18 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     public ObservableCollection<ContentItemViewModel> Items { get; } = [];
 
+    /// <summary>The category sections shown on "All categories" (issue #5); see <see cref="IsGrouped"/>.</summary>
+    public ObservableCollection<CategorySection> Sections { get; } = [];
+
     [ObservableProperty] private string _libTab = "mods";
     [ObservableProperty] private string _selectedProfileKey;
     [ObservableProperty] private string _selectedCategoryKey = AllKey;
     [ObservableProperty] private string _libSearch = string.Empty;
     [ObservableProperty] private string _countLabel = string.Empty;
     [ObservableProperty] private bool _isEmpty;
+
+    /// <summary>True when the list is laid out as category sections (<see cref="Sections"/>) rather than the flat <see cref="Items"/>.</summary>
+    [ObservableProperty] private bool _isGrouped;
 
     /// <summary>The category filter is only useful once at least one item carries a category — otherwise hidden.</summary>
     [ObservableProperty] private bool _showCategoryFilter;
@@ -257,7 +266,7 @@ public sealed partial class LibraryViewModel : ObservableObject
 
         // Narrow to the visible list by the search text and the selected category.
         string? search = string.IsNullOrWhiteSpace(LibSearch) ? null : LibSearch;
-        IReadOnlyList<InstalledContent> filtered = baseSet
+        List<InstalledContent> filtered = baseSet
             .Where(i => Matches(i, search) && MatchesCategory(i))
             .ToList();
 
@@ -265,12 +274,38 @@ public sealed partial class LibraryViewModel : ObservableObject
         var assignTargets = new List<ProfileOption> { new(string.Empty, "Assign to…") };
         assignTargets.AddRange(Profiles.Where(p => p.Key != AllKey && p.Key != UnknownKey));
 
-        Items.Clear();
-        foreach (InstalledContent item in filtered)
+        ContentItemViewModel BuildItem(InstalledContent item)
         {
             _reports.TryGetValue(item.Id, out CompatibilityReport? report);
-            Items.Add(new ContentItemViewModel(item, report, allProfiles, assignTargets, ToggleAsync, UninstallAsync, AssignAsync));
+            return new ContentItemViewModel(item, report, allProfiles, assignTargets, ToggleAsync, UninstallAsync, AssignAsync);
         }
+
+        // On "All categories", lay the list out as labelled category sections (issue #5) instead of one flat
+        // list — but only when there's a category to group by and the split yields more than one section
+        // (a single section would just be the flat list under a redundant header).
+        IReadOnlyList<CategoryGroup> groups = SelectedCategoryKey is AllKey or "" && ShowCategoryFilter
+            ? LibraryGrouping.ByPrimaryCategory(filtered)
+            : [];
+        bool grouped = groups.Count > 1;
+
+        Items.Clear();
+        Sections.Clear();
+        if (grouped)
+        {
+            foreach (CategoryGroup group in groups)
+            {
+                Sections.Add(new CategorySection(HeaderFor(group.Key), group.Items.Select(BuildItem).ToList()));
+            }
+        }
+        else
+        {
+            foreach (InstalledContent item in filtered)
+            {
+                Items.Add(BuildItem(item));
+            }
+        }
+
+        IsGrouped = grouped;
 
         string tabLabel = _libTab switch
         {
@@ -280,9 +315,14 @@ public sealed partial class LibraryViewModel : ObservableObject
         };
         string profileLabel = Profiles
             .FirstOrDefault(p => p.Key.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))?.Label ?? "All profiles";
-        CountLabel = $"{Items.Count} {tabLabel}" + (allProfiles ? string.Empty : $"   ·   {profileLabel}");
-        IsEmpty = Items.Count == 0;
+        CountLabel = $"{filtered.Count} {tabLabel}" + (allProfiles ? string.Empty : $"   ·   {profileLabel}");
+        IsEmpty = filtered.Count == 0;
     }
+
+    // The uppercase, greyed section header for a category key — the same label the dropdown shows (so the two
+    // stay in sync, per issue #5), upper-cased for the section-title aesthetic.
+    private static string HeaderFor(string key)
+        => (key == UncategorizedKey ? "Uncategorized" : Prettify(key)).ToUpperInvariant();
 
     private static string KeyFor(LodestoneSettings s)
         => ActiveProfile.IsAllVersions(s.SelectedVersion) || s.SelectedLoader == Loader.None

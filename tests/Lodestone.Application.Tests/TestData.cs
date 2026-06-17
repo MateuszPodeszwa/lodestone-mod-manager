@@ -15,7 +15,8 @@ internal static class Make
         string[]? provides = null,
         string? projectId = null,
         bool isLibrary = false,
-        string? version = null)
+        string? version = null,
+        string[]? categories = null)
         => new(id, name ?? id, ContentType.Mod)
         {
             Enabled = enabled,
@@ -26,15 +27,17 @@ internal static class Make
             ProvidedIds = provides ?? [id],
             ProjectId = projectId,
             IsLibrary = isLibrary,
+            Categories = categories ?? [],
             Source = projectId is null ? "local" : "modrinth",
         };
 
-    public static InstalledContent Pack(string id, string? name = null, bool enabled = true, string[]? versions = null)
+    public static InstalledContent Pack(string id, string? name = null, bool enabled = true, string[]? versions = null, string[]? categories = null)
         => new(id, name ?? id, ContentType.ResourcePack)
         {
             Enabled = enabled,
             Loader = Loader.None,
             GameVersions = (versions ?? []).Select(GameVersion.Parse).ToList(),
+            Categories = categories ?? [],
         };
 
     public static Dependency Requires(string id, string? range = null) => new(id, DependencyKind.Required, VersionRange: range);
