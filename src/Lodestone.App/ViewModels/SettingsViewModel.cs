@@ -50,6 +50,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly SupporterService _supporter;
     private readonly IUiDispatcher _ui;
     private readonly ResetGameUseCase _reset;
+    private readonly OperationGate _gate;
     private bool _ready;
 
     public SettingsViewModel(
@@ -62,7 +63,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         IGameInventory inventory,
         SupporterService supporter,
         IUiDispatcher ui,
-        ResetGameUseCase reset)
+        ResetGameUseCase reset,
+        OperationGate gate)
     {
         _settings = settings;
         _dialog = dialog;
@@ -74,6 +76,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _supporter = supporter;
         _ui = ui;
         _reset = reset;
+        _gate = gate;
+        _gate.PropertyChanged += (_, _) => OnPropertyChanged(nameof(CanManageLoaders));
         ReloadFromSettings();
         string version = _updater.CurrentVersion;
         string? codename = ReleaseNames.For(version);
@@ -88,6 +92,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             ReloadFromSettings();
             OnPropertyChanged(nameof(IsGameReady));
+            OnPropertyChanged(nameof(CanManageLoaders));
         });
 
         // Re-evaluate supporter-gated perks when status changes (redeem/revoke on the Support page).
@@ -96,6 +101,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>True once a valid Minecraft folder is set; gates the loader picker.</summary>
     public bool IsGameReady => _locator.IsValid(_settings.Current.GameDirectory);
+
+    /// <summary>Single-flight gate so loader/version controls disable while any operation runs.</summary>
+    public OperationGate Gate => _gate;
+
+    /// <summary>Loader/version controls are usable only with a valid folder and no operation in flight.</summary>
+    public bool CanManageLoaders => IsGameReady && _gate.IsIdle;
 
     /// <summary>Early access (beta update channel) is a supporter perk.</summary>
     public bool CanUseEarlyAccess => _supporter.IsSupporter;
@@ -235,15 +246,19 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        Result result = await _loaderInstaller.EnsureInstalledAsync(loader, version).ConfigureAwait(true);
-        if (result.IsSuccess)
+        // Single-flight: skip silently if another operation is running (the controls are disabled anyway).
+        await _gate.RunAsync(async () =>
         {
-            _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} ready", $"Installed for {version} — pick it in your launcher."));
-        }
-        else if (result.Error.Code != "game.dir_missing")
-        {
-            _bus.Publish(new ToastMessage("Loader install failed", result.Error.Message, ToastKind.Error));
-        }
+            Result result = await _loaderInstaller.EnsureInstalledAsync(loader, version).ConfigureAwait(true);
+            if (result.IsSuccess)
+            {
+                _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} ready", $"Installed for {version} — pick it in your launcher."));
+            }
+            else if (result.Error.Code != "game.dir_missing")
+            {
+                _bus.Publish(new ToastMessage("Loader install failed", result.Error.Message, ToastKind.Error));
+            }
+        }).ConfigureAwait(true);
     }
     partial void OnAutoUpdateChanged(bool value) => Save();
     partial void OnNotifyChanged(bool value) => Save();
@@ -420,33 +435,41 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
 
-        IsUpdatingLoader = true;
-        try
+        bool ran = await _gate.RunAsync(async () =>
         {
-            Result<LoaderUpdate> result = await _loaderInstaller.UpdateAsync(loader, version).ConfigureAwait(true);
-            if (result.IsFailure)
+            IsUpdatingLoader = true;
+            try
             {
-                _bus.Publish(new ToastMessage("Loader update failed", result.Error.Message, ToastKind.Error));
-                return;
-            }
+                Result<LoaderUpdate> result = await _loaderInstaller.UpdateAsync(loader, version).ConfigureAwait(true);
+                if (result.IsFailure)
+                {
+                    _bus.Publish(new ToastMessage("Loader update failed", result.Error.Message, ToastKind.Error));
+                    return;
+                }
 
-            LoaderUpdate update = result.Value;
-            if (!update.Changed)
-            {
-                _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} is up to date", $"Already on the latest build (v{update.Version}) for {version}."));
+                LoaderUpdate update = result.Value;
+                if (!update.Changed)
+                {
+                    _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} is up to date", $"Already on the latest build (v{update.Version}) for {version}."));
+                }
+                else if (update.PreviousVersion is null)
+                {
+                    _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} installed", $"v{update.Version} for {version} — pick it in your launcher."));
+                }
+                else
+                {
+                    _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} updated", $"v{update.PreviousVersion} → v{update.Version} for {version}."));
+                }
             }
-            else if (update.PreviousVersion is null)
+            finally
             {
-                _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} installed", $"v{update.Version} for {version} — pick it in your launcher."));
+                IsUpdatingLoader = false;
             }
-            else
-            {
-                _bus.Publish(new ToastMessage($"{loader.ToDisplayName()} updated", $"v{update.PreviousVersion} → v{update.Version} for {version}."));
-            }
-        }
-        finally
+        }).ConfigureAwait(true);
+
+        if (!ran)
         {
-            IsUpdatingLoader = false;
+            _bus.Publish(new ToastMessage("Please wait", "Another install is still running — try again in a moment.", ToastKind.Info));
         }
     }
 

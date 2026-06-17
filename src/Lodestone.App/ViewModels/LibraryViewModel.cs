@@ -35,6 +35,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private readonly IMessageBus _bus;
     private readonly IUiDispatcher _ui;
     private readonly IGameInventory _inventory;
+    private readonly OperationGate _gate;
 
     private IReadOnlyList<InstalledContent> _all = [];
     private IReadOnlyList<GameVersion> _installedVersions = [];
@@ -50,7 +51,8 @@ public sealed partial class LibraryViewModel : ObservableObject
         ISettingsStore settings,
         IMessageBus bus,
         IUiDispatcher ui,
-        IGameInventory inventory)
+        IGameInventory inventory,
+        OperationGate gate)
     {
         _repository = repository;
         _compatibility = compatibility;
@@ -61,9 +63,13 @@ public sealed partial class LibraryViewModel : ObservableObject
         _bus = bus;
         _ui = ui;
         _inventory = inventory;
+        _gate = gate;
         _selectedProfileKey = KeyFor(settings.Current);
         bus.Subscribe<LibraryChanged>(m => _ui.Post(() => _ = LoadAsync()));
     }
+
+    /// <summary>Single-flight gate so the profile selector disables while any operation runs.</summary>
+    public OperationGate Gate => _gate;
 
     /// <summary>"All profiles" plus every installed (version + loader) profile, newest first.</summary>
     public ObservableCollection<ProfileOption> Profiles { get; } = [new(AllKey, "All profiles")];
@@ -110,17 +116,20 @@ public sealed partial class LibraryViewModel : ObservableObject
         if (loader != Loader.None &&
             GameVersion.Create(version).Match<GameVersion?>(v => v, _ => null) is { } gameVersion)
         {
-            Result<ProfileSwitch> switched = await _switch.ExecuteAsync(gameVersion, loader).ConfigureAwait(true);
-            if (switched.IsFailure)
+            await _gate.RunAsync(async () =>
             {
-                _bus.Publish(new ToastMessage("Couldn't switch profile", switched.Error.Message, ToastKind.Error));
-            }
-            else if (switched.Value.Enabled + switched.Value.Disabled > 0)
-            {
-                _bus.Publish(new ToastMessage(
-                    $"Switched to {version} · {loader.ToDisplayName()}",
-                    $"{switched.Value.Enabled} mod(s) active, {switched.Value.Disabled} set aside."));
-            }
+                Result<ProfileSwitch> switched = await _switch.ExecuteAsync(gameVersion, loader).ConfigureAwait(true);
+                if (switched.IsFailure)
+                {
+                    _bus.Publish(new ToastMessage("Couldn't switch profile", switched.Error.Message, ToastKind.Error));
+                }
+                else if (switched.Value.Enabled + switched.Value.Disabled > 0)
+                {
+                    _bus.Publish(new ToastMessage(
+                        $"Switched to {version} · {loader.ToDisplayName()}",
+                        $"{switched.Value.Enabled} mod(s) active, {switched.Value.Disabled} set aside."));
+                }
+            }).ConfigureAwait(true);
         }
 
         _bus.Publish(new LibraryChanged()); // refresh Home/Browse against the new active profile

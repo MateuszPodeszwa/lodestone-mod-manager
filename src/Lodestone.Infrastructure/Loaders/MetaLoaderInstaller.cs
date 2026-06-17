@@ -212,7 +212,7 @@ public sealed class MetaLoaderInstaller : ILoaderInstaller
 
     // Drops the launcher entries for the version-ids we just removed (keyed by id, with a lastVersionId
     // fallback), backing up launcher_profiles.json first — the user's own profiles are left alone.
-    private static void RemoveLauncherProfiles(string gameDir, IReadOnlyList<string> versionIds)
+    private static void RemoveLauncherProfiles(string gameDir, List<string> versionIds)
     {
         string path = Path.Combine(gameDir, "launcher_profiles.json");
         if (!File.Exists(path) || versionIds.Count == 0)

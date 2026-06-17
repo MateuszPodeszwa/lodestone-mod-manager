@@ -24,7 +24,7 @@
                             <TextBlock Text="Used when installing mods that support more than one." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
                         </StackPanel>
                         <Border Style="{StaticResource SegmentBar}" Background="#FF1F1F23" HorizontalAlignment="Right"
-                                IsEnabled="{Binding IsGameReady}" ToolTip="Set your Minecraft folder first">
+                                IsEnabled="{Binding CanManageLoaders}" ToolTip="Set your Minecraft folder first">
                             <StackPanel Orientation="Horizontal">
                                 <RadioButton GroupName="Loader" Style="{StaticResource Segment}" Content="Fabric" IsChecked="{Binding Loader, Converter={StaticResource Equals}, ConverterParameter=fabric, Mode=TwoWay}" />
                                 <RadioButton GroupName="Loader" Style="{StaticResource Segment}" Content="Forge" IsChecked="{Binding Loader, Converter={StaticResource Equals}, ConverterParameter=forge, Mode=TwoWay}" />
@@ -40,7 +40,7 @@
                             <TextBlock Text="Loader version" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextBodyBrush}" />
                             <TextBlock Text="Pick the Minecraft version, then install or update Fabric/Quilt for it." FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" IsEnabled="{Binding IsGameReady}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" IsEnabled="{Binding CanManageLoaders}">
                             <TextBlock Text="Minecraft" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <ComboBox Width="120" Style="{StaticResource DarkComboBox}" ItemContainerStyle="{StaticResource DarkComboBoxItem}"
                                       ItemsSource="{Binding GameVersions}" SelectedItem="{Binding LoaderGameVersion, Mode=TwoWay}" Margin="0,0,10,0" />

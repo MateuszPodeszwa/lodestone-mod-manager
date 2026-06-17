@@ -63,6 +63,7 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly IDialogService _dialog;
     private readonly IGameLocator _locator;
     private readonly IGameInventory _inventory;
+    private readonly OperationGate _gate;
 
     public HomeViewModel(
         IInstalledContentRepository repository,
@@ -74,7 +75,8 @@ public sealed partial class HomeViewModel : ObservableObject
         IUiDispatcher ui,
         IDialogService dialog,
         IGameLocator locator,
-        IGameInventory inventory)
+        IGameInventory inventory,
+        OperationGate gate)
     {
         _repository = repository;
         _installLocal = installLocal;
@@ -86,6 +88,7 @@ public sealed partial class HomeViewModel : ObservableObject
         _dialog = dialog;
         _locator = locator;
         _inventory = inventory;
+        _gate = gate;
         bus.Subscribe<LibraryChanged>(m => _ui.Post(() => _ = LoadAsync()));
         // Re-evaluate the updates surface when "Notify me about updates" is toggled in Settings,
         // without a full library reload (the pending count is already in memory).
@@ -183,29 +186,37 @@ public sealed partial class HomeViewModel : ObservableObject
             return;
         }
 
-        GameVersion? target = ResolveTargetVersion();
-
-        foreach (string path in paths)
+        bool ran = await _gate.RunAsync(async () =>
         {
-            string name = Path.GetFileNameWithoutExtension(path);
-            IsInstalling = true;
-            InstallName = name;
-            InstallTypeLabel = "Reading…";
+            GameVersion? target = ResolveTargetVersion();
 
-            Result<InstalledContent> result = await _installLocal.ExecuteAsync(path, target).ConfigureAwait(true);
+            foreach (string path in paths)
+            {
+                string name = Path.GetFileNameWithoutExtension(path);
+                IsInstalling = true;
+                InstallName = name;
+                InstallTypeLabel = "Reading…";
 
-            if (result.IsSuccess)
-            {
-                _bus.Publish(new ToastMessage("Installed", $"{result.Value.Name} · {result.Value.Type.ToDisplayName()}"));
+                Result<InstalledContent> result = await _installLocal.ExecuteAsync(path, target).ConfigureAwait(true);
+
+                if (result.IsSuccess)
+                {
+                    _bus.Publish(new ToastMessage("Installed", $"{result.Value.Name} · {result.Value.Type.ToDisplayName()}"));
+                }
+                else
+                {
+                    _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
+                }
             }
-            else
-            {
-                _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
-            }
+
+            IsInstalling = false;
+            _bus.Publish(new LibraryChanged());
+        }).ConfigureAwait(true);
+
+        if (!ran)
+        {
+            _bus.Publish(new ToastMessage("Please wait", "Another install is still running — try again in a moment.", ToastKind.Info));
         }
-
-        IsInstalling = false;
-        _bus.Publish(new LibraryChanged());
     }
 
     [RelayCommand]

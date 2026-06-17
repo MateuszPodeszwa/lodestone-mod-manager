@@ -25,6 +25,7 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
     private readonly IUiDispatcher _ui;
     private readonly IGameLocator _locator;
     private readonly IGameInventory _inventory;
+    private readonly OperationGate _gate;
 
     private CancellationTokenSource? _debounce;
     private bool _loadedOnce;
@@ -37,7 +38,8 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
         IMessageBus bus,
         IUiDispatcher ui,
         IGameLocator locator,
-        IGameInventory inventory)
+        IGameInventory inventory,
+        OperationGate gate)
     {
         _registry = registry;
         _install = install;
@@ -47,6 +49,7 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
         _ui = ui;
         _locator = locator;
         _inventory = inventory;
+        _gate = gate;
         bus.Subscribe<LibraryChanged>(m => _ui.Post(MarkInstalledFromLibrary));
         settings.Changed += (_, _) => _ui.Post(() => OnPropertyChanged(nameof(IsGameReady)));
     }
@@ -57,6 +60,9 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
     public bool IsCurseForgeAvailable => _registry.Find("curseforge")?.IsConfigured == true;
 
     public bool IsGameReady => _locator.IsValid(_settings.Current.GameDirectory);
+
+    /// <summary>Single-flight gate so install buttons disable while any operation runs.</summary>
+    public OperationGate Gate => _gate;
 
     public ObservableCollection<CatalogItemViewModel> Results { get; } = [];
 
@@ -278,28 +284,36 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
             return;
         }
 
-        item.Installing = true;
-        try
+        bool ran = await _gate.RunAsync(async () =>
         {
-            Result<CatalogInstall> result = await _install
-                .ExecuteAsync(item.Project, target, _settings.Current.DefaultLoader)
-                .ConfigureAwait(true);
+            item.Installing = true;
+            try
+            {
+                Result<CatalogInstall> result = await _install
+                    .ExecuteAsync(item.Project, target, _settings.Current.DefaultLoader)
+                    .ConfigureAwait(true);
 
-            if (result.IsSuccess)
-            {
-                item.Installed = true;
-                _bus.Publish(new ToastMessage("Installed", DescribeInstall(item.Name, result.Value)));
-                WarnIfVersionNotInstalled(target);
-                _bus.Publish(new LibraryChanged());
+                if (result.IsSuccess)
+                {
+                    item.Installed = true;
+                    _bus.Publish(new ToastMessage("Installed", DescribeInstall(item.Name, result.Value)));
+                    WarnIfVersionNotInstalled(target);
+                    _bus.Publish(new LibraryChanged());
+                }
+                else
+                {
+                    _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
+                }
             }
-            else
+            finally
             {
-                _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
+                item.Installing = false;
             }
-        }
-        finally
+        }).ConfigureAwait(true);
+
+        if (!ran)
         {
-            item.Installing = false;
+            _bus.Publish(new ToastMessage("Please wait", "Another install is still running — try again in a moment.", ToastKind.Info));
         }
     }
 

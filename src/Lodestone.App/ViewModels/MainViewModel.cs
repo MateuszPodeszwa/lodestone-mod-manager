@@ -28,6 +28,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ILoaderInstaller _loaderInstaller;
     private readonly IModSourceRegistry _registry;
     private readonly IGameInventory _inventory;
+    private readonly OperationGate _gate;
 
     public MainViewModel(
         HomeViewModel home,
@@ -50,7 +51,8 @@ public sealed partial class MainViewModel : ObservableObject
         ReconcileLibraryUseCase reconcile,
         ILoaderInstaller loaderInstaller,
         IModSourceRegistry registry,
-        IGameInventory inventory)
+        IGameInventory inventory,
+        OperationGate gate)
     {
         Home = home;
         Library = library;
@@ -73,6 +75,7 @@ public sealed partial class MainViewModel : ObservableObject
         _loaderInstaller = loaderInstaller;
         _registry = registry;
         _inventory = inventory;
+        _gate = gate;
 
         Browse.OpenDetailRequested = OpenDetail;
         Onboarding.Completed += OnOnboardingCompleted;
@@ -243,31 +246,39 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        detail.Installing = true;
-        var progress = new Progress<TransferProgress>(p =>
-            _ui.Post(() => detail.InstallPercent = (int)Math.Round((p.Fraction ?? 0) * 100)));
-
-        Result<CatalogInstall> result = await _install
-            .ExecuteAsync(detail.Project, target, _settings.Current.DefaultLoader, progress)
-            .ConfigureAwait(true);
-
-        detail.Installing = false;
-        if (result.IsSuccess)
+        bool ran = await _gate.RunAsync(async () =>
         {
-            detail.Installed = true;
-            _bus.Publish(new ToastMessage("Installed", DescribeInstall(detail.Name, result.Value)));
-            if (!_inventory.IsVersionInstalled(target))
+            detail.Installing = true;
+            var progress = new Progress<TransferProgress>(p =>
+                _ui.Post(() => detail.InstallPercent = (int)Math.Round((p.Fraction ?? 0) * 100)));
+
+            Result<CatalogInstall> result = await _install
+                .ExecuteAsync(detail.Project, target, _settings.Current.DefaultLoader, progress)
+                .ConfigureAwait(true);
+
+            detail.Installing = false;
+            if (result.IsSuccess)
             {
-                _bus.Publish(new ToastMessage("Heads up",
-                    $"Installed for {target}, but that Minecraft version isn't set up in your launcher yet — it won't load until you install it.",
-                    ToastKind.Warning));
-            }
+                detail.Installed = true;
+                _bus.Publish(new ToastMessage("Installed", DescribeInstall(detail.Name, result.Value)));
+                if (!_inventory.IsVersionInstalled(target))
+                {
+                    _bus.Publish(new ToastMessage("Heads up",
+                        $"Installed for {target}, but that Minecraft version isn't set up in your launcher yet — it won't load until you install it.",
+                        ToastKind.Warning));
+                }
 
-            _bus.Publish(new LibraryChanged());
-        }
-        else
+                _bus.Publish(new LibraryChanged());
+            }
+            else
+            {
+                _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
+            }
+        }).ConfigureAwait(true);
+
+        if (!ran)
         {
-            _bus.Publish(new ToastMessage("Couldn't install", result.Error.Message, ToastKind.Error));
+            _bus.Publish(new ToastMessage("Please wait", "Another install is still running — try again in a moment.", ToastKind.Info));
         }
     }
 

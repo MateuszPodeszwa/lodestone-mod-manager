@@ -38,6 +38,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IUiDispatcher, UiDispatcher>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IAppUpdater, VelopackAppUpdater>();
+        services.AddSingleton<OperationGate>();
 
         // View models
         services.AddSingleton<HomeViewModel>();
