@@ -74,7 +74,8 @@ fallback · close-to-tray · app version / check-for-updates.
 |---|---|---|
 | No in-app payment processor, yet must "unlock" | 🟧 | Donate buttons open Patreon in the browser; unlocking uses an **offline signed code** (ECDSA P-256, public key embedded, private key stays with the maintainer). |
 | Design says functionality must never be gated | 🟧 | Unlocks are **cosmetic/convenience only** (badge, accent themes, beta channel). Core features remain free. |
-| Codes get shared / cracked | 🟨 | Accepted: perks are cosmetic, so signature verification is sufficient; no secret ships in the client beyond a public key; codes can carry an expiry/nonce. |
+| Codes get shared / cracked | 🟨 | Accepted: perks are cosmetic, so signature verification is sufficient; no secret ships in the client beyond a public key; codes can carry an expiry/nonce. Codes are issued only to **active, paying** patrons. |
+| Beta builds are a supporter perk, but the repo is public | 🟨 | Soft-gated: the in-app Beta channel and the website's beta download are supporter-only, but a GitHub pre-release is still directly downloadable. Accepted (a perk, not paid content); serve betas from an authenticated endpoint if hard-gating is ever needed. |
 
 ## 10. Window / UX (custom chrome, DPI, responsiveness, a11y)
 | Risk | Sev | Mitigation |

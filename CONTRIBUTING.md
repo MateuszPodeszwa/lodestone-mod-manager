@@ -74,6 +74,11 @@ docs: document the compatibility rule engine
 
 Keep the subject in the imperative mood and under ~72 characters; use the body to explain *why*.
 
+> The public **website changelog is generated from these commit subjects** — grouped into
+> NEW / IMPROVED / FIXED by type — so a clear subject line becomes a clear changelog entry.
+> Housekeeping types (`docs`, `ci`, `chore`, `build`, `test`) and non-app scopes (e.g. `website`,
+> `design`) are filtered out of it.
+
 ## Pull requests
 
 1. Make sure `dotnet build` and `dotnet test` are green locally.

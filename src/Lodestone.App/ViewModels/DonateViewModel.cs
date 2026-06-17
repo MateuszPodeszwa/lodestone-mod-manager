@@ -8,8 +8,8 @@ using Lodestone.Domain.Common;
 namespace Lodestone.App.ViewModels;
 
 /// <summary>
-/// The Support screen. Promotes Patreon (every patron — current or former, any tier — is a supporter)
-/// and redeems the offline, time-limited code minted by the website. Flips to a thank-you state once a
+/// The Support screen. Promotes Patreon (the website mints codes for active, paying patrons) and
+/// redeems the offline, time-limited code minted by the website. Flips to a thank-you state once a
 /// code is active.
 /// </summary>
 public sealed partial class DonateViewModel : ObservableObject

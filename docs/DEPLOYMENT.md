@@ -66,8 +66,9 @@ to add for basic releases. (Optional code‑signing is covered in §5.)
 From the repo root, with your change already committed and pushed to `main`:
 
 ```powershell
-# 1. (optional but recommended) give the release a codename in src/Lodestone.Application/Common/ReleaseNames.cs
-#    e.g.  ["0.1.1"] = "Iron Pickaxe",
+# 1. (optional but recommended) give the release a codename in two places:
+#    - in-app banner:      src/Lodestone.Application/Common/ReleaseNames.cs   ["0.1.1"] = "Iron Pickaxe",
+#    - website changelog:  website/app.config.ts → releases.names            '0.1.1': 'Iron Pickaxe',
 
 # 2. tag the commit you want to release
 git tag v0.1.1
@@ -75,6 +76,10 @@ git tag v0.1.1
 # 3. push the tag — THIS is what triggers the release
 git push origin v0.1.1
 ```
+
+> The website **changelog notes are generated from the commits** in each release (the GitHub
+> release body itself is left empty), grouped into NEW / IMPROVED / FIXED from your
+> conventional-commit subjects. So clear `feat:` / `fix:` messages = a clean public changelog.
 
 Then watch it build:
 
@@ -87,6 +92,23 @@ the update feed files attached. Installed clients will offer the update the next
 
 > You can also trigger a build from the GitHub website (**Actions → Release → Run workflow**) and type a
 > version — handy if you'd rather not tag from the command line.
+
+### Cutting a beta (patrons‑first early access)
+
+To ship a build to supporters first, tag a **pre‑release** version — anything with a semver suffix
+(`-beta.1`, `-rc.1`, …):
+
+```powershell
+git tag v0.2.0-beta.1
+git push origin v0.2.0-beta.1
+```
+
+`release.yml` detects the `-` suffix and publishes it as a GitHub **pre‑release** (it adds `--pre` to
+the Velopack upload). Only supporters receive it — in the app via **Settings → Mods & updates →
+Early access** (the Beta update channel), and on the website via the **Download beta** button on the
+Supporter page. Stable users never see it. When you're ready for everyone, cut a normal release
+(`v0.2.0`); stable clients pick it up on next launch and beta users roll onto it cleanly. The full
+mechanics and gating caveats are in **[SUPPORTERS.md](SUPPORTERS.md#early-access-beta-builds)**.
 
 ---
 
@@ -150,6 +172,12 @@ git push
 git tag v0.1.1
 git push origin v0.1.1
 gh run watch
+
+# Ship a beta to supporters first (pre-release tag → GitHub pre-release)
+git tag v0.2.0-beta.1
+git push origin v0.2.0-beta.1
+# …later, promote it to everyone:
+git tag v0.2.0 && git push origin v0.2.0
 
 # Build the installer + zip locally (to test packaging without releasing)
 dotnet publish src/Lodestone.App/Lodestone.App.csproj -c Release -r win-x64 --self-contained true -o publish /p:Version=0.1.1

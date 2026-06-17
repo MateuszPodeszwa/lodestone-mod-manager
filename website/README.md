@@ -18,18 +18,22 @@ small server layer that:
 ## 1. Editing content (no coding)
 
 Almost all text, links and pricing live in **[`app.config.ts`](./app.config.ts)** — open it,
-edit the strings, save. That covers the hero, feature grid, tutorial steps, support tiers,
-FAQ, footer, and the GitHub/Patreon/Discord links.
+edit the strings, save. That covers the hero, feature grid, tutorial steps, the home trust
+strip, support tiers, FAQ, release codenames (`releases.names`), footer, and the
+GitHub/Patreon/Discord links.
 
 Things you **don't** edit by hand (they come from GitHub automatically):
 
 - the current **version number** (hero, download page, changelog);
-- the **changelog** entries — they're your GitHub Release notes;
+- the **changelog** entries — generated from the commits in each release;
 - **download links** and **SHA-256 checksums**.
 
-To add a changelog entry, just publish a GitHub Release (the app's `release.yml` already does
-this when you push a `vX.Y.Z` tag). Edit a release's notes on GitHub and the site updates
-within a few minutes.
+The changelog is built from the **commits between release tags** (the GitHub Release bodies
+are empty): conventional-commit subjects (`feat:`, `fix:`, `perf:` …) become the
+NEW / IMPROVED / FIXED lines, while housekeeping types (`docs`, `ci`, `chore`) and non-app
+scopes (`website`, `design`) are filtered out. So cutting a `vX.Y.Z` release populates its own
+notes — just write clear commit messages. The only editorial bit is the optional per-release
+**codename** badge (e.g. "Spawn Point"), set in `app.config.ts` under `releases.names`.
 
 ### Discord (work in progress)
 
@@ -74,8 +78,7 @@ descriptions are in [`.env.example`](./.env.example).
 | `NUXT_PATREON_CLIENT_ID` / `_SECRET` | ✅ for sign-in | Patreon OAuth client credentials |
 | `NUXT_PATREON_REDIRECT_URI` | ✅ for sign-in | `https://lodestonemc.net/api/auth/patreon/callback` |
 | `NUXT_PATREON_CAMPAIGN_ID` | optional | Restrict eligibility to your campaign |
-| `NUXT_PATREON_ALLOW_FORMER` | optional | `true` counts former/declined patrons as supporters |
-| `NUXT_BETA_THRESHOLD_CENTS` | optional | Pledge (cents) that unlocks beta access (default `700`) |
+| `NUXT_BETA_THRESHOLD_CENTS` | optional | Pledge (cents) that unlocks the website's beta download (default `700`) |
 | `NUXT_GITHUB_REPO` | optional | Defaults to `MateuszPodeszwa/LodestoneModManager` |
 | `NUXT_GITHUB_TOKEN` | optional | Raises the GitHub API rate limit |
 | `DATABASE_URL` | auto on Railway | Postgres connection (the plugin injects it) |
@@ -91,6 +94,8 @@ The desktop app verifies **offline, signed codes** of the form
 (IEEE-P1363)**. This site signs exactly that shape with the **private key matching the public
 key embedded in the app** (`SupporterKeys.DefaultPublicKey`).
 
+- Codes are issued only to **active, paying** patrons — former/declined patrons and free
+  followers don't qualify (the `NUXT_PATREON_OWNER_*` allowlist is the one exception).
 - The private key lives **only** in `NUXT_SUPPORTER_PRIVATE_KEY_B64` (a server secret). It is
   never sent to the browser.
 - A code is valid to redeem for **1 hour** (enforced by the app). The site also enforces a

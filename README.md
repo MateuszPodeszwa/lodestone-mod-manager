@@ -52,7 +52,8 @@ Maintainers: how releases and auto-update work is documented in **[docs/DEPLOYME
   for the **currently selected game version**.
 - **Browse mods** — search Modrinth (CurseForge pluggable), filter by category, sort by downloads /
   followers, and install with one click.
-- **My Content** — per-version "profiles", enable/disable without deleting, uninstall, search.
+- **My Content** — per-version "profiles", filter your mods by category, enable/disable without
+  deleting, uninstall, search.
 - **Compatibility & dependency checks** — every item in the list is scanned; a clear symbol appears
   next to its name when it **requires a missing library**, **conflicts with another mod**, is
   **built for a different game version/loader**, or is **duplicated**. Hover for the full reason.
@@ -96,19 +97,21 @@ dotnet run --project src/Lodestone.App        # launches the app
 ## 📦 Releases & auto-update
 
 Tagging a commit `v*` triggers the release workflow, which packages a Velopack installer and
-publishes it to GitHub Releases. Installed clients update themselves from that feed. A plain-English,
-first-timer's walkthrough — cutting a release, how auto-update works, SmartScreen, troubleshooting —
-is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+publishes it to GitHub Releases. Installed clients update themselves from that feed. Tagging a
+**pre-release** version (e.g. `v1.3.0-beta.1`) ships a **patrons-first beta** — published as a GitHub
+pre-release that only the supporter Early-access channel receives until you cut the stable `vX.Y.Z`.
+A plain-English, first-timer's walkthrough — cutting a release, betas, how auto-update works,
+SmartScreen, troubleshooting — is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
 **Maintainer setup** (Patreon link, supporter keys, CurseForge key, signing, cutting a release):
 see **[docs/HANDOFF.md](docs/HANDOFF.md)**.
 
 ## 💚 Supporters
 
-Donations are handled through Patreon and are **entirely optional**. After pledging you receive a
-redeemable code that unlocks **cosmetic-only** perks (a supporter badge, extra accent themes and an
-opt-in beta update channel). No payment processing happens inside the app, and **no functionality is
-ever gated** behind a donation. See [docs/SUPPORTERS.md](docs/SUPPORTERS.md).
+Donations are handled through Patreon and are **entirely optional**. After pledging on any paid tier,
+**active patrons** receive a redeemable code that unlocks **cosmetic-only** perks (a supporter badge,
+extra accent themes and an opt-in beta update channel). No payment processing happens inside the app,
+and **no functionality is ever gated** behind a donation. See [docs/SUPPORTERS.md](docs/SUPPORTERS.md).
 
 ## ⚖️ License
 

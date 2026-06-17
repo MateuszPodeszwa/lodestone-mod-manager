@@ -13,7 +13,8 @@ yet deployed — those two pages must go live for the supporter sign-in/code flo
 A real key pair was generated; the **public** key is embedded in `SupporterKeys.DefaultPublicKey`
 and the **private** key is under `keys/` (git-ignored). Issue codes with the CLI — see
 [SUPPORTERS.md](SUPPORTERS.md). To rotate keys, run `lodestone keygen`, replace the public key, ship
-an update. Keep `keys/` backed up somewhere safe and out of version control.
+an update. Keep `keys/` backed up somewhere safe and out of version control. The website mints codes
+only for **active, paying** patrons (former/free don't qualify) — see [SUPPORTERS.md](SUPPORTERS.md).
 
 ## 3. CurseForge (optional second source)
 Modrinth works with no key. To enable the CurseForge fallback, obtain an
@@ -34,6 +35,10 @@ update from. Example:
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+Tag a **pre-release** version instead (e.g. `v1.3.0-beta.1`) to ship a patrons-first beta:
+`release.yml` publishes it as a GitHub pre-release that only the supporter Beta channel and the
+website's beta download resolve to. Promote it to everyone later with a normal `vX.Y.Z` tag.
 
 A full, beginner-friendly walkthrough of releasing and auto-update lives in
 [DEPLOYMENT.md](DEPLOYMENT.md).

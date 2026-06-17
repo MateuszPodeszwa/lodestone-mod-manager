@@ -93,6 +93,10 @@ folder so a bad update is recoverable.
 - **Code signing** is optional and documented as a hand-off step: provide a certificate via the
   `VPK_SIGN_*` secrets and the release workflow signs the artifacts. Unsigned builds still work but
   may trigger SmartScreen on first run.
+- **Early-access (beta) channel.** A pre-release tag (`vX.Y.Z-beta.N`) is published as a GitHub
+  *pre-release* (`release.yml` adds `--pre`); `VelopackAppUpdater` includes pre-releases only on the
+  supporter-gated Beta channel (`GithubSource(prerelease: true)`), so betas reach supporters without
+  affecting stable clients. See [SUPPORTERS.md](SUPPORTERS.md#early-access-beta-builds).
 
 ## Configuration & data locations
 
