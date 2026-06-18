@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const app = useAppConfig()
 const toast = useToast()
-const { data: rel } = await useFetch('/api/releases/latest')
+const { data: versions } = await useFetch('/api/releases/versions')
 
 useSeoMeta({
   title: 'Report a bug',
@@ -22,7 +22,10 @@ const form = reactive({
   searched: false,
 })
 watchEffect(() => {
-  if (!form.version && rel.value?.version) form.version = `${rel.value.version} (latest)`
+  if (!form.version && versions.value?.length) {
+    const latest = versions.value.find((v) => v.latest) ?? versions.value[0]
+    if (latest) form.version = `${latest.version} (latest)`
+  }
 })
 
 const submitted = ref(false)
@@ -115,8 +118,10 @@ const tips = [
           <div>
             <label class="text-[13px] font-semibold text-[#dcdce0]">Lodestone version</label>
             <select v-model="form.version" :class="inputCls + ' cursor-pointer'">
-              <option v-if="rel?.version" :value="`${rel.version} (latest)`">{{ rel.version }} (latest)</option>
-              <option value="older">Older / not sure</option>
+              <option v-for="v in versions" :key="v.tag" :value="v.latest ? `${v.version} (latest)` : v.version">
+                {{ v.version }}{{ v.latest ? ' (latest)' : '' }}{{ v.prerelease ? ' (pre-release)' : '' }}
+              </option>
+              <option value="Other">Other</option>
             </select>
           </div>
           <div>
