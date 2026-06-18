@@ -18,6 +18,9 @@ public sealed record ProfileSwitch(int Enabled, int Disabled);
 /// </summary>
 public sealed class SwitchProfileUseCase
 {
+    // Mirrors the code IContentInstaller.SetEnabledAsync returns when a tracked file is gone from disk.
+    private const string FileMissingCode = "install.file_missing";
+
     private readonly IInstalledContentRepository _repository;
     private readonly IContentInstaller _installer;
     private readonly IGameInventory _inventory;
@@ -61,6 +64,15 @@ public sealed class SwitchProfileUseCase
                     .ConfigureAwait(false);
                 if (changed.IsFailure)
                 {
+                    // An orphaned record whose file is no longer on disk has nothing to flip — skip it and
+                    // keep swapping the rest instead of aborting the whole switch (issue #42). Its record is
+                    // left as-is for a later reconcile/uninstall to resolve. Any other failure (e.g. the file
+                    // is locked because Minecraft is running) is a real, fixable stop and still aborts.
+                    if (changed.Error.Code == FileMissingCode)
+                    {
+                        continue;
+                    }
+
                     return Result.Failure<ProfileSwitch>(changed.Error);
                 }
 

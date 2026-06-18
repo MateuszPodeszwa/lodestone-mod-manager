@@ -559,6 +559,45 @@ public class SwitchProfileUseCaseTests
         await installer.DidNotReceive().SetEnabledAsync(Arg.Any<ContentType>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         await repo.DidNotReceive().UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Skips_an_orphaned_record_whose_file_is_missing_and_still_switches_the_rest()
+    {
+        // An orphaned record (file deleted from disk) must not abort the whole switch (issue #42).
+        InstalledContent missing = Mod("missing", Loader.Fabric, "1.21.4", enabled: true); // would be set aside, but its file is gone
+        InstalledContent b = Mod("b", Loader.Fabric, "1.20.1", enabled: false);            // belongs → enable
+        (SwitchProfileUseCase useCase, IContentInstaller installer, IInstalledContentRepository repo) = Build(missing, b);
+
+        installer.SetEnabledAsync(ContentType.Mod, "missing.jar", Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<string>("install.file_missing", "That file is no longer on disk."));
+
+        Result<ProfileSwitch> result = await useCase.ExecuteAsync(GameVersion.Parse("1.20.1"), Loader.Fabric);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Enabled.ShouldBe(1); // b still got enabled
+        result.Value.Disabled.ShouldBe(0);
+        b.Enabled.ShouldBeTrue();
+        missing.Enabled.ShouldBeTrue(); // orphan left untouched — nothing on disk to flip
+        await installer.Received(1).SetEnabledAsync(ContentType.Mod, "missing.jar", false, Arg.Any<CancellationToken>());
+        await repo.Received(1).UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>()); // only b persisted
+    }
+
+    [Fact]
+    public async Task A_locked_file_still_aborts_the_switch()
+    {
+        // Unlike a missing file, a locked file (game running) is a real, fixable stop — keep failing fast.
+        InstalledContent a = Mod("a", Loader.Fabric, "1.21.4", enabled: true);
+        (SwitchProfileUseCase useCase, IContentInstaller installer, IInstalledContentRepository repo) = Build(a);
+
+        installer.SetEnabledAsync(ContentType.Mod, "a.jar", Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<string>("install.locked", "Couldn't change the file — is Minecraft running?"));
+
+        Result<ProfileSwitch> result = await useCase.ExecuteAsync(GameVersion.Parse("1.20.1"), Loader.Fabric);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe("install.locked");
+        await repo.DidNotReceive().UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>());
+    }
 }
 
 public class RefreshUpdatesUseCaseTests
