@@ -197,6 +197,49 @@ public class InstallFromCatalogUseCaseTests
     }
 
     [Fact]
+    public async Task Reinstalls_for_a_different_loader_removing_the_stale_build()
+    {
+        // Sodium is already installed for Quilt; installing for Fabric is NOT a duplicate (it's a different
+        // profile) — it should re-target and drop the old Quilt build so it doesn't orphan a file on disk.
+        var source = Substitute.For<IModSource>();
+        source.IsConfigured.Returns(true);
+        source.GetVersionsAsync("sodium", Arg.Any<CancellationToken>()).Returns(Result.Success<IReadOnlyList<ProjectVersion>>([SodiumBuild(Loader.Fabric)]));
+
+        var registry = Substitute.For<IModSourceRegistry>();
+        registry.Find("modrinth").Returns(source);
+        registry.Primary.Returns(source);
+
+        var downloader = Substitute.For<IDownloader>();
+        downloader.DownloadAsync(Arg.Any<DownloadRequest>(), Arg.Any<IProgress<TransferProgress>?>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new DownloadedFile(@"C:\tmp\sodium.jar", 1_200_000, "deadbeef")));
+
+        var installer = Substitute.For<IContentInstaller>();
+        installer.PlaceAsync(Arg.Any<string>(), ContentType.Mod, Arg.Any<DuplicateResolution>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(new PlaceResult("sodium-fabric-0.5.8.jar", 1_200_000, false)));
+        installer.RemoveAsync(Arg.Any<ContentType>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
+
+        InstalledContent existing = Make.Mod("sodium", loader: Loader.Quilt);
+        existing.FileName = "sodium-quilt-0.5.8.jar";
+        var repo = Substitute.For<IInstalledContentRepository>();
+        repo.FindAsync("sodium", Arg.Any<CancellationToken>()).Returns(existing);
+
+        var settings = Substitute.For<ISettingsStore>();
+        settings.Current.Returns(new LodestoneSettings());
+
+        var inventory = Substitute.For<IGameInventory>();
+        inventory.IsLoaderInstalled(Arg.Any<Loader>(), Arg.Any<GameVersion>()).Returns(true);
+
+        var useCase = new InstallFromCatalogUseCase(registry, new VersionResolver(), downloader, installer, repo, settings, inventory);
+
+        Result<CatalogInstall> result = await useCase.ExecuteAsync(Sodium(), GameVersion.Parse("1.21.4"), Loader.Fabric);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Item.Loader.ShouldBe(Loader.Fabric); // re-targeted to the active loader
+        await installer.Received(1).RemoveAsync(ContentType.Mod, "sodium-quilt-0.5.8.jar", Arg.Any<CancellationToken>());
+        await repo.Received().UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Auto_installs_required_dependencies_from_the_source()
     {
         var source = Substitute.For<IModSource>();

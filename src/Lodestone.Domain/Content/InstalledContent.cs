@@ -71,6 +71,13 @@ public sealed class InstalledContent
     /// <summary>True if this item declares support for <paramref name="version"/>.</summary>
     public bool SupportsVersion(GameVersion version) => GameVersions.Any(v => v.Equals(version));
 
+    /// <summary>
+    /// True when this content belongs to the given loader's profile. Loader-independent content (resource
+    /// packs, shaders) always matches; a mod matches only when its <see cref="Loader"/> is the active one,
+    /// so a mod installed for a different loader isn't treated as installed for the current profile.
+    /// </summary>
+    public bool MatchesLoaderProfile(Loader activeLoader) => !Type.UsesLoader() || Loader == activeLoader;
+
     /// <summary>Whether any identifier (id, project id or provided id) matches <paramref name="identifier"/>.</summary>
     public bool Provides(string identifier)
     {

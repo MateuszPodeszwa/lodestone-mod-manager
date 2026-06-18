@@ -255,7 +255,9 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
             Results.Clear();
             if (result.IsSuccess)
             {
+                Loader activeLoader = _settings.Current.DefaultLoader;
                 HashSet<string> installed = (await _repository.GetAllAsync(ct).ConfigureAwait(true))
+                    .Where(i => i.MatchesLoaderProfile(activeLoader)) // installed *for the active profile*, not globally
                     .Select(i => i.Id)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -390,7 +392,9 @@ public sealed partial class BrowseViewModel : ObservableObject, IDisposable
 
     private async void MarkInstalledFromLibrary()
     {
+        Loader activeLoader = _settings.Current.DefaultLoader;
         HashSet<string> installed = (await _repository.GetAllAsync().ConfigureAwait(true))
+            .Where(i => i.MatchesLoaderProfile(activeLoader)) // installed *for the active profile*, not globally
             .Select(i => i.Id)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 

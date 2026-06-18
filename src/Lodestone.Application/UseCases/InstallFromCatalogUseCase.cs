@@ -53,7 +53,11 @@ public sealed class InstallFromCatalogUseCase
         IProgress<TransferProgress>? progress = null,
         CancellationToken ct = default)
     {
-        if (await _repository.FindAsync(project.Id, ct).ConfigureAwait(false) is not null)
+        // "Already installed" is profile-aware: a mod installed for a *different* loader isn't installed for
+        // the profile being targeted, so allow re-installing it for this loader instead of blocking. A
+        // same-loader mod, or a loader-independent pack/shader that's already present, is a genuine duplicate.
+        InstalledContent? existing = await _repository.FindAsync(project.Id, ct).ConfigureAwait(false);
+        if (existing is not null && existing.MatchesLoaderProfile(loader))
         {
             return Result.Failure<CatalogInstall>("install.duplicate", $"{project.Name} is already installed.");
         }
@@ -77,6 +81,14 @@ public sealed class InstallFromCatalogUseCase
         }
 
         IModSource source = _registry.Find(project.Source) ?? _registry.Primary;
+
+        // Re-targeting a mod to a different loader (existing is non-null only in that case here — a
+        // same-loader duplicate returned above): drop the old build first so the switch doesn't orphan a
+        // file on disk. The removal is a soft-delete to trash, so it stays recoverable.
+        if (existing is not null && !string.IsNullOrWhiteSpace(existing.FileName))
+        {
+            await _installer.RemoveAsync(existing.Type, existing.FileName!, ct).ConfigureAwait(false);
+        }
 
         Result<InstalledContent> primary = await InstallOneAsync(source, project, targetVersion, loader, progress, ct).ConfigureAwait(false);
         if (primary.IsFailure)
