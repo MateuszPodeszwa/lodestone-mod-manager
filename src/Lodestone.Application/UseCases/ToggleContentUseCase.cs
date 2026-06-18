@@ -39,6 +39,9 @@ public sealed class ToggleContentUseCase
         }
 
         item.Enabled = target;
+        // Record the explicit intent: turning a mod off here means "keep it off, even inside its own
+        // profile", so a later profile switch-and-return won't silently re-enable it. Enabling clears it.
+        item.UserDisabled = !target;
         await _repository.UpsertAsync(item, ct).ConfigureAwait(false);
         return Result.Success();
     }

@@ -38,6 +38,14 @@ public sealed class InstalledContent
 
     public bool Enabled { get; set; } = true;
 
+    /// <summary>
+    /// The user deliberately turned this item off inside its own profile (via the My Content toggle), as
+    /// opposed to it being disabled because a profile switch set it aside. A profile switch honors this:
+    /// a user-disabled mod stays off even when it belongs to the activated profile, so the choice survives
+    /// switching away and back. Cleared the moment the user enables it again.
+    /// </summary>
+    public bool UserDisabled { get; set; }
+
     public double SizeMb { get; set; }
 
     /// <summary>Source project id (e.g. Modrinth) when the item came from a catalog; otherwise null.</summary>
