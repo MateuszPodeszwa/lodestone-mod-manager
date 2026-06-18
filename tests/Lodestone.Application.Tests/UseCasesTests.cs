@@ -559,6 +559,27 @@ public class SwitchProfileUseCaseTests
         await installer.DidNotReceive().SetEnabledAsync(Arg.Any<ContentType>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
         await repo.DidNotReceive().UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Keeps_a_user_disabled_mod_off_even_when_it_belongs_to_the_activated_profile()
+    {
+        // The user turned this mod off inside its own profile; switching back to that profile must not
+        // silently re-enable it (issue #40).
+        InstalledContent a = Mod("a", Loader.Fabric, "1.20.1", enabled: false);
+        a.UserDisabled = true;
+        InstalledContent b = Mod("b", Loader.Fabric, "1.20.1", enabled: true); // belongs, not user-disabled → stays on
+        (SwitchProfileUseCase useCase, IContentInstaller installer, IInstalledContentRepository repo) = Build(a, b);
+
+        Result<ProfileSwitch> result = await useCase.ExecuteAsync(GameVersion.Parse("1.20.1"), Loader.Fabric);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Enabled.ShouldBe(0); // nothing flipped on — a stays off, b was already on
+        result.Value.Disabled.ShouldBe(0);
+        a.Enabled.ShouldBeFalse();
+        b.Enabled.ShouldBeTrue();
+        await installer.DidNotReceive().SetEnabledAsync(ContentType.Mod, "a.jar", true, Arg.Any<CancellationToken>());
+        await repo.DidNotReceive().UpsertAsync(Arg.Any<InstalledContent>(), Arg.Any<CancellationToken>());
+    }
 }
 
 public class RefreshUpdatesUseCaseTests
@@ -644,7 +665,30 @@ public class ToggleAndUninstallTests
 
         result.IsSuccess.ShouldBeTrue();
         item.Enabled.ShouldBeFalse();
+        item.UserDisabled.ShouldBeTrue(); // explicit "keep it off" intent, survives a profile switch (issue #40)
         item.FileName.ShouldBe("sodium.jar.disabled");
+    }
+
+    [Fact]
+    public async Task Toggle_back_on_clears_the_user_disabled_intent()
+    {
+        var item = Make.Mod("sodium");
+        item.Enabled = false;
+        item.UserDisabled = true;
+        item.FileName = "sodium.jar.disabled";
+
+        var repo = Substitute.For<IInstalledContentRepository>();
+        repo.FindAsync("sodium", Arg.Any<CancellationToken>()).Returns(item);
+        var installer = Substitute.For<IContentInstaller>();
+        installer.SetEnabledAsync(ContentType.Mod, "sodium.jar.disabled", true, Arg.Any<CancellationToken>())
+            .Returns(Result.Success("sodium.jar"));
+
+        Result result = await new ToggleContentUseCase(repo, installer).ExecuteAsync("sodium");
+
+        result.IsSuccess.ShouldBeTrue();
+        item.Enabled.ShouldBeTrue();
+        item.UserDisabled.ShouldBeFalse();
+        item.FileName.ShouldBe("sodium.jar");
     }
 
     [Fact]

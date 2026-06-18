@@ -14,6 +14,7 @@ internal sealed class InstalledContentDto
     public string Loader { get; set; } = nameof(Domain.Loader.None);
     public List<string> GameVersions { get; set; } = [];
     public bool Enabled { get; set; } = true;
+    public bool UserDisabled { get; set; }
     public double SizeMb { get; set; }
     public string? ProjectId { get; set; }
     public string Source { get; set; } = "local";
@@ -50,6 +51,7 @@ internal static class InstalledContentMapper
         Loader = c.Loader.ToString(),
         GameVersions = c.GameVersions.Select(v => v.Value).ToList(),
         Enabled = c.Enabled,
+        UserDisabled = c.UserDisabled,
         SizeMb = c.SizeMb,
         ProjectId = c.ProjectId,
         Source = c.Source,
@@ -103,6 +105,7 @@ internal static class InstalledContentMapper
             Loader = Enum.TryParse(dto.Loader, out Loader loader) ? loader : Loader.None,
             GameVersions = versions,
             Enabled = dto.Enabled,
+            UserDisabled = dto.UserDisabled,
             SizeMb = dto.SizeMb,
             ProjectId = dto.ProjectId,
             Source = dto.Source,

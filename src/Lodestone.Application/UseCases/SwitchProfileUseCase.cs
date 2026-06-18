@@ -49,7 +49,12 @@ public sealed class SwitchProfileUseCase
             }
 
             bool belongs = item.Loader == loader && item.SupportsVersion(version);
-            if (item.Enabled == belongs)
+
+            // A mod the user deliberately turned off stays off, even inside the profile it belongs to —
+            // otherwise switching away and back would silently re-enable it (issue #40). Only mods set
+            // aside for a different loader/version are the switch's to flip.
+            bool desiredEnabled = belongs && !item.UserDisabled;
+            if (item.Enabled == desiredEnabled)
             {
                 continue; // already in the desired state — don't churn the disk or the repo
             }
@@ -57,7 +62,7 @@ public sealed class SwitchProfileUseCase
             if (!string.IsNullOrWhiteSpace(item.FileName))
             {
                 Result<string> changed = await _installer
-                    .SetEnabledAsync(item.Type, item.FileName!, belongs, ct)
+                    .SetEnabledAsync(item.Type, item.FileName!, desiredEnabled, ct)
                     .ConfigureAwait(false);
                 if (changed.IsFailure)
                 {
@@ -67,10 +72,10 @@ public sealed class SwitchProfileUseCase
                 item.FileName = changed.Value; // the on-disk name gains/loses the .disabled suffix
             }
 
-            item.Enabled = belongs;
+            item.Enabled = desiredEnabled;
             await _repository.UpsertAsync(item, ct).ConfigureAwait(false);
 
-            if (belongs)
+            if (desiredEnabled)
             {
                 enabled++;
             }
