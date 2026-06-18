@@ -74,11 +74,78 @@ public sealed partial class LibraryViewModel : ObservableObject
         _inventory = inventory;
         _gate = gate;
         _selectedProfileKey = KeyFor(settings.Current);
-        bus.Subscribe<LibraryChanged>(m => _ui.Post(() => _ = LoadAsync()));
+        bus.Subscribe<LibraryChanged>(m => _ui.Post(() =>
+        {
+            _ = LoadAsync();
+            RaiseLoaderGate(); // a loader may have just been installed/removed
+        }));
+        // Changing the Default mod loader in Settings must switch My Content to that loader's profile —
+        // re-key the selection to follow it, reload, and refresh the gate (mirrors Browse, issue #17).
+        settings.Changed += (_, _) => _ui.Post(FollowDefaultLoader);
     }
 
     /// <summary>Single-flight gate so the profile selector disables while any operation runs.</summary>
     public OperationGate Gate => _gate;
+
+    /// <summary>True (mods tab only) when the selected loader isn't installed for the target version, so the
+    /// mods list is cleared and a banner explains it; mirrors Browse. Always false for resource packs/shaders,
+    /// which are loader-independent and stay visible.</summary>
+    public bool ShowLoaderGate => _libTab == "mods" && !ActiveProfile.IsLoaderReady(_settings.Current, _inventory, usesLoader: true);
+
+    /// <summary>The banner text shown when <see cref="ShowLoaderGate"/> is true — same wording as Browse.</summary>
+    public string LoaderGateMessage => ActiveProfile.LoaderGateMessage(_settings.Current, _inventory);
+
+    private void RaiseLoaderGate()
+    {
+        OnPropertyChanged(nameof(ShowLoaderGate));
+        OnPropertyChanged(nameof(LoaderGateMessage));
+    }
+
+    // Reacts to a Settings change: re-key the selected profile so My Content follows the chosen Default
+    // loader (showing e.g. "26.2 · Forge" the instant it's picked — even before Forge is installed — which
+    // fixes the stale-label bug), reload the list, and refresh the gate. Guarded against the transient
+    // selection churn that RefreshProfileOptions/ApplyProfileAsync drive so the two don't fight.
+    private void FollowDefaultLoader()
+    {
+        if (_suppressSwitch)
+        {
+            return;
+        }
+
+        string desired = KeyForDefaultLoader();
+        if (!desired.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))
+        {
+            // Re-point the selection without triggering an on-disk profile switch — only the view follows
+            // the loader the user chose (an explicit profile pick still goes through ApplyProfileAsync).
+            _suppressSwitch = true;
+            try
+            {
+                SelectedProfileKey = desired;
+            }
+            finally
+            {
+                _suppressSwitch = false;
+            }
+        }
+
+        _ = LoadAsync();
+        RaiseLoaderGate();
+    }
+
+    // The profile key that follows the chosen Default loader against the active target version, so the
+    // label tracks the loader the moment it's selected — even when that loader isn't installed yet (the
+    // gate then clears the mods list). Stays on "All profiles" only when there's no concrete version to
+    // pin to or no loader is selected.
+    private string KeyForDefaultLoader()
+    {
+        Loader loader = _settings.Current.DefaultLoader;
+        if (loader == Loader.None || ActiveProfile.Target(_settings.Current, _inventory) is not { } target)
+        {
+            return AllKey;
+        }
+
+        return $"{target.Value}|{loader.ToSlug()}";
+    }
 
     /// <summary>"All profiles" plus every installed (version + loader) profile, newest first.</summary>
     public ObservableCollection<ProfileOption> Profiles { get; } = [new(AllKey, "All profiles")];
@@ -106,7 +173,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>The category filter is only useful once at least one item carries a category — otherwise hidden.</summary>
     [ObservableProperty] private bool _showCategoryFilter;
 
-    partial void OnLibTabChanged(string value) => Rebuild();
+    partial void OnLibTabChanged(string value)
+    {
+        RaiseLoaderGate(); // the gate applies to the mods tab only
+        Rebuild();
+    }
 
     partial void OnLibSearchChanged(string value) => Rebuild();
 
@@ -203,6 +274,16 @@ public sealed partial class LibraryViewModel : ObservableObject
             .Where(p => !p.IsVanilla)
             .Select(p => new ProfileOption(p.Key, p.Label)));
 
+        // The profile that follows the chosen Default loader, even when that loader isn't installed yet:
+        // offering it keeps My Content pointed at it (label "26.2 · Forge") while the gate clears the mods
+        // list — instead of snapping the selector back to "All profiles" (issue #17, BUG 2).
+        string pending = KeyForDefaultLoader();
+        if (pending != AllKey && !desired.Any(o => o.Key.Equals(pending, StringComparison.OrdinalIgnoreCase)))
+        {
+            (string pendingVersion, Loader pendingLoader) = Parse(pending);
+            desired.Add(new ProfileOption(pending, $"{pendingVersion} · {pendingLoader.ToDisplayName()}"));
+        }
+
         // A bucket for adopted mods Lodestone couldn't attribute to a version — only shown when some exist.
         if (_all.Any(i => i.Type.UsesLoader() && i.GameVersions.Count == 0))
         {
@@ -242,6 +323,21 @@ public sealed partial class LibraryViewModel : ObservableObject
             "shaders" => ContentType.Shader,
             _ => ContentType.Mod,
         };
+
+        // Mods tab with the selected loader not installed for the target version: clear the list and let the
+        // banner explain it (mirrors Browse). Resource packs/shaders are loader-independent and never gated.
+        if (type.UsesLoader() && ShowLoaderGate)
+        {
+            Items.Clear();
+            Sections.Clear();
+            IsGrouped = false;
+            ShowCategoryFilter = false;
+            string gatedProfile = Profiles
+                .FirstOrDefault(p => p.Key.Equals(SelectedProfileKey, StringComparison.OrdinalIgnoreCase))?.Label ?? "All profiles";
+            CountLabel = $"0 mods   ·   {gatedProfile}";
+            IsEmpty = false; // the banner stands in for the empty-state here
+            return;
+        }
 
         // The set in scope for this profile + tab, before the search and category facets are applied —
         // it's what both the category dropdown and the visible list are derived from.

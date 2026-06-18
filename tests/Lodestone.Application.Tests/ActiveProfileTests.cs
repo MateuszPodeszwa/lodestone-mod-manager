@@ -48,4 +48,79 @@ public class ActiveProfileTests
 
         ActiveProfile.Target(settings, Inventory()).ShouldBeNull();
     }
+
+    [Fact]
+    public void IsLoaderReady_is_true_for_mods_when_the_loader_is_installed_for_the_target()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.Fabric };
+        IGameInventory inv = Inventory("1.20.1");
+        inv.IsLoaderInstalled(Loader.Fabric, Arg.Any<GameVersion>()).Returns(true);
+
+        ActiveProfile.IsLoaderReady(settings, inv, usesLoader: true).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsLoaderReady_is_false_for_mods_when_the_loader_is_not_installed_for_the_target()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.Forge };
+        IGameInventory inv = Inventory("1.20.1");
+        inv.IsLoaderInstalled(Arg.Any<Loader>(), Arg.Any<GameVersion>()).Returns(false);
+
+        ActiveProfile.IsLoaderReady(settings, inv, usesLoader: true).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsLoaderReady_is_false_for_mods_when_no_loader_is_selected()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.None };
+        IGameInventory inv = Inventory("1.20.1");
+        inv.IsLoaderInstalled(Arg.Any<Loader>(), Arg.Any<GameVersion>()).Returns(true);
+
+        ActiveProfile.IsLoaderReady(settings, inv, usesLoader: true).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsLoaderReady_is_true_for_loader_independent_content()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.None };
+        IGameInventory inv = Inventory(); // no loader, nothing installed — still fine for packs/shaders
+
+        ActiveProfile.IsLoaderReady(settings, inv, usesLoader: false).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsLoaderReady_is_true_for_mods_when_there_is_no_concrete_target()
+    {
+        // "All versions" with nothing installed → no target; gated separately at install, so ready here.
+        var settings = new LodestoneSettings { SelectedVersion = "all", DefaultLoader = Loader.Forge };
+
+        ActiveProfile.IsLoaderReady(settings, Inventory(), usesLoader: true).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void LoaderGateMessage_names_the_loader_and_version()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.Forge };
+
+        ActiveProfile.LoaderGateMessage(settings, Inventory("1.20.1"))
+            .ShouldBe("Install the Forge loader for 1.20.1 in Settings before adding mods.");
+    }
+
+    [Fact]
+    public void LoaderGateMessage_asks_for_a_loader_when_none_is_selected()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "1.20.1", DefaultLoader = Loader.None };
+
+        ActiveProfile.LoaderGateMessage(settings, Inventory("1.20.1"))
+            .ShouldBe("Install a mod loader for 1.20.1 in Settings before adding mods.");
+    }
+
+    [Fact]
+    public void LoaderGateMessage_drops_the_version_when_there_is_no_target()
+    {
+        var settings = new LodestoneSettings { SelectedVersion = "all", DefaultLoader = Loader.Forge };
+
+        ActiveProfile.LoaderGateMessage(settings, Inventory())
+            .ShouldBe("Install the Forge loader in Settings before adding mods.");
+    }
 }

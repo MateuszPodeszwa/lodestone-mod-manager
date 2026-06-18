@@ -190,9 +190,22 @@ public sealed partial class HomeViewModel : ObservableObject
         {
             GameVersion? target = ResolveTargetVersion();
 
+            // When the active loader isn't installed for the target version, mods can't load — skip dropped
+            // mod files up front with the same gate toast Browse/My Content show (resource packs and shaders
+            // are loader-independent and still install). The use case re-checks authoritatively per file.
+            bool loaderReady = ActiveProfile.IsLoaderReady(_settings.Current, _inventory, usesLoader: true);
+
             foreach (string path in paths)
             {
                 string name = Path.GetFileNameWithoutExtension(path);
+
+                if (!loaderReady && IsModFile(path))
+                {
+                    _bus.Publish(new ToastMessage("Loader not installed",
+                        ActiveProfile.LoaderGateMessage(_settings.Current, _inventory), ToastKind.Warning));
+                    continue;
+                }
+
                 _gate.StatusLabel = $"Installing {name}…"; // per-file label on the activity bar
                 IsInstalling = true;
                 InstallName = name;
@@ -281,6 +294,12 @@ public sealed partial class HomeViewModel : ObservableObject
             IsCheckingUpdates = false;
         }
     }
+
+    // A loader-bound file by extension: ".jar"/".litemod" are mods; ".zip"/".mcpack" are packs/shaders that
+    // don't need a loader. Used only to skip mods up front when the loader gate is up; the install use case
+    // still detects the real type and re-checks the gate authoritatively.
+    private static bool IsModFile(string path)
+        => Path.GetExtension(path).ToLowerInvariant() is ".jar" or ".litemod";
 
     /// <summary>A concrete install target (selected version, else newest installed); null when nothing is installed.</summary>
     private GameVersion? ResolveTargetVersion() => ActiveProfile.Target(_settings.Current, _inventory);

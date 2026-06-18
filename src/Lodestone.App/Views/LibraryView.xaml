@@ -241,6 +241,18 @@
             </StackPanel>
         </Grid>
 
+        <!-- Loader gate: on the Mods tab, the selected loader isn't installed for this version yet, so the
+             mods list is cleared and this banner explains it (mirrors Browse). Packs/shaders aren't gated. -->
+        <Border Visibility="{Binding ShowLoaderGate, Converter={StaticResource BoolToVis}}"
+                Background="#24E3B341" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1"
+                CornerRadius="11" Padding="14,11" Margin="0,18,0,0">
+            <StackPanel Orientation="Horizontal">
+                <Path Width="17" Height="17" VerticalAlignment="Center" Stretch="Uniform" Stroke="{StaticResource WarningBrush}" StrokeThickness="1.8"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" Data="M12 9v4 M12 17h.01 M10.3 4 3.3 16a2 2 0 0 0 1.7 3h14a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0Z" />
+                <TextBlock Text="{Binding LoaderGateMessage}" Foreground="{StaticResource WarningBrush}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </StackPanel>
+        </Border>
+
         <!-- List — flat, when a specific category is selected or there's nothing to group by. -->
         <ItemsControl ItemsSource="{Binding Items}" Margin="0,18,0,0"
                       ItemTemplate="{StaticResource ContentItemTemplate}"
