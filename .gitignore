@@ -19,24 +19,14 @@ TestResults/
 # ----- IDE / OS -----
 .vs/
 .idea/
+.claude/
 *.DotSettings.user
 .vscode/*
 !.vscode/extensions.json
 Thumbs.db
 .DS_Store
 
-# ----- Local agent / tooling state (do not publish) -----
-.claude/
-CLAUDE.md
-CLAUDE.local.md
-AGENTS.md
-.cursor/
-.cursorrules
-.windsurfrules
-.aider*
-.github/copilot-instructions.md
-
-# ----- Design source bundle (kept local, not published) -----
+# ----- Local design assets (not published) -----
 /design/
 
 # ----- Local secrets / signing material (NEVER commit) -----
